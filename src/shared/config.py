@@ -26,6 +26,7 @@ class Config:
 
     # API Keys
     FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
+    FINNHUB_API_KEY: str | None = os.getenv("FINNHUB_API_KEY")
 
     # MT5 Configuration
     MT5_LOGIN: int | None = (
