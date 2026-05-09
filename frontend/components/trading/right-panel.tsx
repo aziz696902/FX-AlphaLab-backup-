@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FileText, Maximize2, X } from "lucide-react";
+import { FileText, Maximize2, Sparkles, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +196,7 @@ export function RightPanel({
   coordinatorSignals,
   agentSignals,
 }: RightPanelProps) {
+  const [analysisRevealed, setAnalysisRevealed] = useState(false);
   const [activePairTab, setActivePairTab] = useState(symbol);
   const [reportOpen, setReportOpen] = useState(false);
   const [aiNarrative, setAiNarrative] = useState<string | null>(null);
@@ -284,6 +285,77 @@ export function RightPanel({
       </div>
 
       <div className="flex-1 overflow-auto">
+        <style>{`
+          @keyframes rp-fade-up {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes rp-shimmer-bg {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+          }
+          @keyframes rp-content-reveal {
+            from { opacity: 0; transform: scale(0.97) translateY(10px); filter: blur(4px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0);  }
+          }
+          @keyframes rp-deep-dive-glow {
+            0%, 100% { box-shadow: 0 2px 8px rgba(31,74,168,0.25); }
+            50%       { box-shadow: 0 4px 22px rgba(31,74,168,0.6), 0 0 0 2px rgba(31,74,168,0.25); }
+          }
+          @keyframes rp-deep-dive-shimmer-bg {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+          }
+        `}</style>
+
+        {/* Idle state — shown until user triggers analysis */}
+        {!analysisRevealed && (
+          <div
+            className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center"
+            style={{ animation: 'rp-fade-up 0.4s ease-out both' }}
+          >
+            {/* Static icon orb — no pulse */}
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-full"
+              style={{ background: 'radial-gradient(circle at 40% 35%, rgba(31,74,168,0.16), rgba(31,74,168,0.06))' }}
+            >
+              <Sparkles className="h-6 w-6" style={{ color: 'rgb(31,74,168)' }} />
+            </div>
+
+            {/* Text — staggered */}
+            <div style={{ animation: 'rp-fade-up 0.4s 0.12s ease-out both' }}>
+              <p className="text-sm font-semibold text-foreground">AI Recommendations</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Analyze market conditions and generate trade signals across all pairs.
+              </p>
+            </div>
+
+            {/* Button — staggered, slow shimmer */}
+            <div className="w-full" style={{ animation: 'rp-fade-up 0.4s 0.22s ease-out both' }}>
+              <Button
+                size="sm"
+                className="relative h-9 w-full overflow-hidden border border-primary/30 bg-primary text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                onClick={() => setAnalysisRevealed(true)}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                Run Analysis
+                <span
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    backgroundImage: 'linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+                    backgroundSize: '200% 100%',
+                    backgroundPosition: '-200% center',
+                    animation: 'rp-shimmer-bg 5s ease-in-out infinite 1s',
+                  }}
+                />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Analysis content */}
+        {analysisRevealed && (
+        <div style={{ animation: 'rp-content-reveal 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
         {/* Today's Call */}
         <div className="border-b border-border p-3">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -345,10 +417,23 @@ export function RightPanel({
               <DialogTrigger asChild>
                 <Button
                   size="sm"
-                  className="mt-3 h-9 w-full border border-primary/30 bg-primary text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                  className="relative mt-3 h-9 w-full overflow-hidden border-0 text-xs font-semibold text-white"
+                  style={{
+                    background: 'linear-gradient(105deg, rgb(24,62,148), rgb(31,74,168) 50%, rgb(48,96,196))',
+                    animation: 'rp-deep-dive-glow 2.6s ease-in-out infinite',
+                  }}
                 >
                   <FileText className="mr-1.5 h-3.5 w-3.5" />
                   Open Deep Dive Report
+                  <span
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      backgroundImage: 'linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+                      backgroundSize: '200% 100%',
+                      backgroundPosition: '-200% center',
+                      animation: 'rp-deep-dive-shimmer-bg 4s ease-in-out infinite 2s',
+                    }}
+                  />
                 </Button>
               </DialogTrigger>
               <DialogContent
@@ -593,6 +678,8 @@ export function RightPanel({
             </div>
           </div>
         </div>
+        </div>
+        )}
       </div>
 
       <OrderControls symbol={activePair.symbol} />
