@@ -17,6 +17,7 @@ from src.backend.schemas.auth import (
     RefreshRequest,
     SignupRequest,
     TokenResponse,
+    UpdateProfileRequest,
     UserResponse,
 )
 from src.backend.security import (
@@ -158,4 +159,39 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db)) -> None:
 
 @router.get("/me", response_model=UserResponse)
 def me(current_user: UserAccount = Depends(get_current_user)) -> UserResponse:
+    return UserResponse.model_validate(current_user)
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    payload: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> UserResponse:
+    if payload.new_password:
+        if not payload.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Current password required"
+            )
+        if not current_user.password_hash or not verify_password(
+            payload.current_password, current_user.password_hash
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect"
+            )
+        current_user.password_hash = hash_password(payload.new_password)
+
+    if payload.email and payload.email != current_user.email:
+        existing = db.execute(
+            select(UserAccount).where(UserAccount.email == _normalize_email(payload.email))
+        ).scalar_one_or_none()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
+        current_user.email = _normalize_email(payload.email)
+
+    if payload.full_name is not None:
+        current_user.full_name = payload.full_name
+
+    db.commit()
+    db.refresh(current_user)
     return UserResponse.model_validate(current_user)

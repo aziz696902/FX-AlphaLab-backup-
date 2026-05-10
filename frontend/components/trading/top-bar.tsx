@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Bell, Settings, User, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, Settings, User, RotateCcw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CoordinatorReportAPI } from "@/lib/api";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const instruments = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"];
 
 interface TopBarProps {
@@ -23,8 +26,43 @@ interface TopBarProps {
   report: CoordinatorReportAPI | null;
 }
 
+function useAccountBalance() {
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchBalance() {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(`${API_BASE}/trading/account`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBalance(data.balance ?? null);
+        }
+      } catch {
+        // MT5 not connected — balance stays null
+      }
+    }
+    fetchBalance();
+    const id = setInterval(fetchBalance, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return balance;
+}
+
 export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, report }: TopBarProps) {
+  const router = useRouter();
   const lastUpdated = report?.date ?? null;
+  const balance = useAccountBalance();
+
+  function handleLogout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    router.replace("/auth");
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 shadow-[var(--card-shadow)]">
@@ -70,8 +108,19 @@ export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, re
       </nav>
 
       {/* Right Section */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* MT5 Balance */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted border border-border">
+          <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-mono font-semibold text-foreground tabular-nums">
+            {balance !== null
+              ? `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : "—"}
+          </span>
+        </div>
+
         <div className="h-8 w-px bg-border" />
+
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <Bell className="h-4 w-4" />
@@ -94,9 +143,23 @@ export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, re
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <User className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <User className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                <User className="h-3.5 w-3.5 mr-2" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
