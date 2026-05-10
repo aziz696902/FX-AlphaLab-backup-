@@ -56,9 +56,11 @@ class Config:
     # Data collection settings
     SCRAPING_DELAY: float = float(os.getenv("SCRAPING_DELAY", "3.0"))
     REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
-    REDDIT_LABELS_PATH: Path = DATA_DIR / "processed" / "reddit" / "labels_checkpoint.jsonl"
+    REDDIT_LABELS_PATH: Path = (
+        DATA_DIR / "processed" / "sentiment" / "source=reddit" / "reddit_labels_checkpoint.jsonl"
+    )
     STOCKTWITS_LABELS_PATH: Path = (
-        DATA_DIR / "processed" / "sentiment" / "source=stockwits" / "labels_checkpoint.jsonl"
+        DATA_DIR / "processed" / "sentiment" / "source=stocktwits" / "labels_checkpoint.jsonl"
     )
     STOCKTWITS_MODEL_DIR: Path = ROOT_DIR / "models" / "sentiment" / "stocktwits"
 

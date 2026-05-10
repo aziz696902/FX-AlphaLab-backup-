@@ -268,10 +268,10 @@ class InferencePipeline:
         sentiment_dir = data_dir / "sentiment"
 
         stocktwits_node = StocktwitsSignalNode(
-            checkpoint_path=(sentiment_dir / "source=stockwits" / "labels_checkpoint.jsonl")
+            checkpoint_path=(sentiment_dir / "source=stocktwits" / "labels_checkpoint.jsonl")
         )
         reddit_node = RedditSignalNode(
-            checkpoint_path=self._root / "data" / "processed" / "reddit" / "labels_checkpoint.jsonl"
+            checkpoint_path=(sentiment_dir / "source=reddit" / "reddit_labels_checkpoint.jsonl")
         )
         gdelt_node = GDELTSignalNode(silver_dir=sentiment_dir / "source=gdelt")
 

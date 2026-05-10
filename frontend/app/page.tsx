@@ -12,6 +12,7 @@ import { useInferenceData } from "@/hooks/use-inference-data";
 
 export default function TradingDashboard() {
   const [activeInstrument, setActiveInstrument] = useState("EURUSD");
+  const [liveTick, setLiveTick] = useState<import("@/lib/api").LiveTick | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { sizes, handleMouseDown, resetLayout } = useResizableLayout();
   const inference = useInferenceData();
@@ -48,6 +49,7 @@ export default function TradingDashboard() {
             symbol={activeInstrument}
             coordinatorSignal={inference.coordinatorSignals.get(activeInstrument) ?? null}
             report={inference.report}
+            onTick={setLiveTick}
           />
 
           <Splitter
@@ -69,6 +71,7 @@ export default function TradingDashboard() {
           report={inference.report}
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
+          liveTick={liveTick}
         />
       </div>
     </div>

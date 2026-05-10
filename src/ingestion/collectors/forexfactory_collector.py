@@ -531,7 +531,7 @@ class ForexFactoryCalendarCollector(BaseCollector):
             self.logger.info("Attempting to set timezone to GMT via UI interaction...")
 
             # Wait for page to be fully loaded
-            time.sleep(3)
+            time.sleep(60)
 
             # Specific selectors for the timezone link (based on actual HTML structure)
             time_selectors = [
@@ -543,7 +543,7 @@ class ForexFactoryCalendarCollector(BaseCollector):
             time_element = None
             for selector in time_selectors:
                 try:
-                    time_element = WebDriverWait(driver, 5).until(
+                    time_element = WebDriverWait(driver, 10).until(
                         ec.element_to_be_clickable((By.XPATH, selector))
                     )
                     self.logger.debug(f"Found timezone link with selector: {selector}")
@@ -558,17 +558,17 @@ class ForexFactoryCalendarCollector(BaseCollector):
             # Click to open timezone settings page
             self.logger.debug(f"Clicking timezone link: {time_element.get_attribute('title')}")
             time_element.click()
-            time.sleep(3)  # Wait for timezone page to load
+            time.sleep(8)  # Wait for timezone page to load
 
             # Find and click the rich-select dropdown to open timezone options
             try:
                 # Find the rich-select component (custom dropdown)
-                rich_select = WebDriverWait(driver, 5).until(
+                rich_select = WebDriverWait(driver, 10).until(
                     ec.element_to_be_clickable((By.CSS_SELECTOR, "div.rich-select"))
                 )
                 self.logger.debug("Found rich-select dropdown, clicking to open options")
                 rich_select.click()
-                time.sleep(2)  # Wait for dropdown options to appear
+                time.sleep(5)  # Wait for dropdown options to appear
             except TimeoutException:
                 self.logger.warning("Could not find rich-select dropdown")
                 driver.back()
@@ -586,7 +586,7 @@ class ForexFactoryCalendarCollector(BaseCollector):
             gmt_option = None
             for selector in gmt_selectors:
                 try:
-                    gmt_option = WebDriverWait(driver, 5).until(
+                    gmt_option = WebDriverWait(driver, 10).until(
                         ec.presence_of_element_located((By.XPATH, selector))
                     )
                     self.logger.debug(
@@ -597,10 +597,10 @@ class ForexFactoryCalendarCollector(BaseCollector):
                     driver.execute_script(
                         "arguments[0].scrollIntoView({block: 'center'});", gmt_option
                     )
-                    time.sleep(0.5)
+                    time.sleep(2)
 
                     # Wait for it to be clickable
-                    gmt_option = WebDriverWait(driver, 5).until(
+                    gmt_option = WebDriverWait(driver, 10).until(
                         ec.element_to_be_clickable((By.XPATH, selector))
                     )
                     break
@@ -615,11 +615,11 @@ class ForexFactoryCalendarCollector(BaseCollector):
             # Click GMT option
             self.logger.debug("Selecting GMT timezone from dropdown")
             gmt_option.click()
-            time.sleep(1)
+            time.sleep(3)
 
             # Click the "Save Settings" button
             try:
-                save_button = WebDriverWait(driver, 5).until(
+                save_button = WebDriverWait(driver, 10).until(
                     ec.element_to_be_clickable(
                         (
                             By.XPATH,
@@ -629,7 +629,7 @@ class ForexFactoryCalendarCollector(BaseCollector):
                 )
                 self.logger.debug("Clicking 'Save Settings' button")
                 save_button.click()
-                time.sleep(3)  # Wait for settings to save and page to reload
+                time.sleep(8)  # Wait for settings to save and page to reload
             except TimeoutException:
                 self.logger.warning("Could not find 'Save Settings' button")
                 driver.back()
@@ -701,7 +701,8 @@ class ForexFactoryCalendarCollector(BaseCollector):
 
                 # Wait for Cloudflare challenge to complete
                 # Check for "Just a moment" and wait for it to disappear
-                max_cloudflare_wait = 30  # seconds
+                max_cloudflare_wait = 300  # seconds
+                time.sleep(30)
                 start_time = time.time()
                 while time.time() - start_time < max_cloudflare_wait:
                     page_title = driver.title

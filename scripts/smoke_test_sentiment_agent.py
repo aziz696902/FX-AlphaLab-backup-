@@ -23,7 +23,7 @@ try:
             Config.DATA_DIR
             / "processed"
             / "sentiment"
-            / "source=stockwits"
+            / "source=stocktwits"
             / "labels_checkpoint.jsonl"
         ),
         log_file=Config.LOGS_DIR / "agents" / "stocktwits_node.log",

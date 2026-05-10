@@ -68,12 +68,9 @@ def _frame(rows: int) -> pd.DataFrame:
 
 
 def test_fred_macro_happy_path(orchestrator):
+    # FREDCollector.collect() returns dict[str, int] (row counts per series).
     collector = Mock()
-    collector.collect.return_value = {
-        "financial_stress": _frame(2),
-        "federal_funds_rate": _frame(3),
-    }
-    collector.export_csv.return_value = Path("ignored.csv")
+    collector.collect.return_value = {"financial_stress": 2, "federal_funds_rate": 3}
 
     normalizer = Mock()
     normalizer.preprocess.return_value = {"macro_all": _frame(5)}
@@ -93,7 +90,6 @@ def test_fred_macro_happy_path(orchestrator):
     assert result.backfill_performed is True
     assert result.error is None
     assert collector.collect.call_count == 1
-    assert collector.export_csv.call_count == 2
     assert normalizer_cls.call_args.kwargs["sources"] == ["fred", "ecb"]
     assert normalizer.preprocess.call_count == 1
     assert normalizer.preprocess.call_args.kwargs["backfill"] is True

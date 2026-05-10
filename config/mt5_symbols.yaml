@@ -1,0 +1,13 @@
+broker: exness   # Switch to "metaquotes" for MT5 default demo server
+
+symbol_map:
+  exness:
+    EURUSD: EURUSDm
+    GBPUSD: GBPUSDm
+    USDJPY: USDJPYm
+    USDCHF: USDCHFm
+  metaquotes:
+    EURUSD: EURUSD
+    GBPUSD: GBPUSD
+    USDJPY: USDJPY
+    USDCHF: USDCHF

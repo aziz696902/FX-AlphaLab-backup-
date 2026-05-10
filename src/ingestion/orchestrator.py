@@ -45,8 +45,7 @@ class CollectionOrchestrator:
         # Internal registry: source_id -> callable that runs the collector
         # Each callable takes (source_config, fetch_from) and returns rows written.
         self._registry: dict[str, Callable] = {
-            "dukascopy_ohlcv": self._collect_dukascopy_d1,
-            "dukascopy_d1": self._collect_dukascopy_d1,
+            "dukascopy_ohlcv": self._collect_dukascopy_ohlcv,
             "dukascopy_h4": self._collect_dukascopy_h4,
             "dukascopy_h1": self._collect_dukascopy_h1,
             "dukascopy_m15": self._collect_dukascopy_m15,
@@ -66,8 +65,10 @@ class CollectionOrchestrator:
     def _read_parquet_ts(pf: Path) -> pd.Series:
         """Read timestamp_utc from a parquet file regardless of index vs column layout."""
         df = pd.read_parquet(pf)
-        if "timestamp_utc" in df.columns:
-            return pd.to_datetime(df["timestamp_utc"], utc=True, errors="coerce").dropna()
+        # Check standard name first, then source-specific aliases
+        for col in ("timestamp_utc", "event_date"):
+            if col in df.columns:
+                return pd.to_datetime(df[col], utc=True, errors="coerce").dropna()
         if df.index.name == "timestamp_utc":
             ts = pd.to_datetime(df.index, utc=True, errors="coerce")
             return ts[ts.notna()]
@@ -94,7 +95,7 @@ class CollectionOrchestrator:
         5. Return CollectionResult with rows written, backfill flag, and any error
 
         Args:
-            source_id: Source identifier (e.g., "fred_macro", "dukascopy_d1")
+            source_id: Source identifier (e.g., "fred_macro", "dukascopy_ohlcv")
 
         Returns:
             CollectionResult with outcome
@@ -126,36 +127,31 @@ class CollectionOrchestrator:
             has_minimum = self._silver_has_minimum(source_id)
             should_backfill = not has_minimum or source_config.fetch_from is not None
 
-            # Determine fetch window
+            # In backfill mode collectors derive their own start date from source_config;
+            # incremental_from is only non-None in the incremental path.
+            incremental_from = None
             if should_backfill and source_config.fetch_from is not None:
-                # Backfill from explicit anchor date to today
-                fetch_from = datetime.fromisoformat(source_config.fetch_from).date()
-                self.logger.info(f"{source_id}: Backfill from configured anchor date {fetch_from}")
-                backfill_performed = True
-            elif should_backfill and source_config.min_silver_days is not None:
-                # Backfill from min_silver_days back to today
-                fetch_from = (
-                    datetime.utcnow() - timedelta(days=source_config.min_silver_days)
-                ).date()
                 self.logger.info(
-                    f"{source_id}: Backfill required (below minimum {source_config.min_silver_days} days). "
-                    f"Fetching from {fetch_from}"
+                    f"{source_id}: Backfill from configured anchor {source_config.fetch_from}"
                 )
-                backfill_performed = True
+            elif should_backfill and source_config.min_silver_days is not None:
+                anchor = (datetime.utcnow() - timedelta(days=source_config.min_silver_days)).date()
+                self.logger.info(
+                    f"{source_id}: Backfill below minimum "
+                    f"({source_config.min_silver_days} days), from {anchor}"
+                )
             elif should_backfill:
-                # Backfill with no specific window (use collector default)
-                self.logger.info(f"{source_id}: Backfill required but no min_silver_days set")
-                backfill_performed = True
+                self.logger.info(f"{source_id}: Backfill required (no minimum window configured)")
             else:
-                # Incremental: last 2 days for overlap (handles late-arriving data)
-                fetch_from = (datetime.utcnow() - timedelta(days=2)).date()
-                self.logger.info(f"{source_id}: Incremental collection from {fetch_from}")
-                backfill_performed = False
+                incremental_from = (datetime.utcnow() - timedelta(days=2)).date()
+                self.logger.info(f"{source_id}: Incremental collection from {incremental_from}")
+
+            backfill_performed = should_backfill
 
             # Call registered collector
             collector_func = self._registry[source_id]
             collector_result = collector_func(
-                source_config=source_config, fetch_from=fetch_from if not should_backfill else None
+                source_config=source_config, fetch_from=incremental_from
             )
             if isinstance(collector_result, CollectionResult):
                 result = collector_result
@@ -581,8 +577,8 @@ class CollectionOrchestrator:
         rows_written = sum(len(df) for df in silver_results.values())
         return rows_written
 
-    def _collect_dukascopy_d1(self, source_config, fetch_from) -> int:  # pragma: no cover
-        """Collect daily OHLCV data from Dukascopy."""
+    def _collect_dukascopy_ohlcv(self, source_config, fetch_from) -> int:  # pragma: no cover
+        """Collect OHLCV data from Dukascopy (all timeframes via shared helper)."""
         return self._collect_dukascopy(source_config, fetch_from)
 
     def _collect_dukascopy_h4(self, source_config, fetch_from) -> int:  # pragma: no cover
@@ -626,7 +622,12 @@ class CollectionOrchestrator:
 
         # Collect Bronze (only in backfill path)
         collector = GDELTEventsCollector(output_dir=bronze_dir)
-        if is_backfill and self._bronze_has_recent_data(bronze_dir, staleness_limit):
+        end_day_path = collector._day_path(end_dt.date())
+        if (
+            is_backfill
+            and end_day_path.exists()
+            and self._bronze_has_recent_data(bronze_dir, staleness_limit)
+        ):
             self.logger.info("gdelt_events: Bronze is recent - skipping network fetch")
         else:
             collector.collect(start_date=start_dt, end_date=end_dt, backfill=is_backfill)
@@ -703,103 +704,44 @@ class CollectionOrchestrator:
         source_config,
         fetch_from,
     ) -> CollectionResult:  # pragma: no cover
-        """Collect US Fed macro indicators (FRED)."""
+        """Collect FRED macro indicators and rebuild the consolidated Silver macro file.
+
+        Responsibility: FRED Bronze only.  MacroNormalizer reads both FRED and ECB
+        Bronze from disk, so running it here keeps Silver fresh whenever FRED updates.
+        ECB Bronze collection is the sole responsibility of _collect_ecb_macro.
+        """
         try:
             from src.ingestion.collectors.fred_collector import FREDCollector
             from src.ingestion.preprocessors.macro_normalizer import MacroNormalizer
             from src.shared.config import Config
 
-            # Determine date window (always timezone-aware UTC)
             end_dt = datetime.now(timezone.utc)
             if fetch_from is not None:
-                # fetch_from is a date object from run_source() — convert to datetime
                 start_dt = datetime(
                     fetch_from.year, fetch_from.month, fetch_from.day, tzinfo=timezone.utc
                 )
             else:
-                lookback_days = source_config.min_silver_days or int(
-                    max(source_config.interval_hours * 3 / 24, 72 / 24)
-                )
-                start_dt = end_dt - timedelta(days=lookback_days)
+                start_dt = end_dt - timedelta(days=source_config.min_silver_days or 730)
 
-            # Bronze directories and staleness
             fred_bronze = self.root / "data" / "raw" / "fred"
-            ecb_bronze = self.root / "data" / "raw" / "ecb"
             staleness_limit = timedelta(hours=max(source_config.interval_hours * 3, 72))
-
             rows_written = 0
 
-            # Collect missing Bronze sources as needed
-            fred_ok = self._bronze_has_recent_data(fred_bronze, staleness_limit, "**/*.csv")
-            ecb_ok = self._bronze_has_recent_data(ecb_bronze, staleness_limit, "**/*.csv")
-
-            # If FRED Bronze missing, collect it
-            if not fred_ok:
-                collector = FREDCollector(
-                    api_key=Config.FRED_API_KEY,
-                    output_dir=fred_bronze,
-                )
+            if not self._bronze_has_recent_data(fred_bronze, staleness_limit, "**/*.csv"):
+                collector = FREDCollector(api_key=Config.FRED_API_KEY, output_dir=fred_bronze)
                 fred_counts = collector.collect(start_date=start_dt, end_date=end_dt)
-                # fred_counts may be dict(series_id -> DataFrame) or dict -> int
-                if isinstance(fred_counts, dict):
-                    for name, val in fred_counts.items():
-                        if hasattr(val, "__len__") and not isinstance(val, int):
-                            # Assume DataFrame-like
-                            try:
-                                collector.export_csv(val, name)
-                            except Exception:
-                                pass
-                            rows_written += len(val)
-                        else:
-                            rows_written += int(val)
-                else:
-                    try:
-                        rows_written += int(fred_counts)
-                    except Exception:
-                        pass
+                rows_written = sum(fred_counts.values())
             else:
-                self.logger.info("fred_macro: FRED Bronze is recent — skipping FRED network fetch")
+                self.logger.info("fred_macro: FRED Bronze is recent — skipping network fetch")
 
-            # If ECB Bronze missing, collect it
-            if not ecb_ok:
-                from src.ingestion.collectors.ecb_collector import ECBCollector
-
-                ecb_collector = ECBCollector(output_dir=ecb_bronze)
-                ecb_counts = ecb_collector.collect(start_date=start_dt, end_date=end_dt)
-                if isinstance(ecb_counts, dict):
-                    for name, val in ecb_counts.items():
-                        if hasattr(val, "__len__") and not isinstance(val, int):
-                            try:
-                                ecb_collector.export_csv(val, name)
-                            except Exception:
-                                pass
-                            rows_written += len(val)
-                        else:
-                            rows_written += int(val)
-                else:
-                    try:
-                        rows_written += int(ecb_counts)
-                    except Exception:
-                        pass
-            else:
-                self.logger.info("fred_macro: ECB Bronze is recent — skipping ECB network fetch")
-
-            # MacroNormalizer always reprocesses all Bronze — date range is for API fetching only
             normalizer = MacroNormalizer(
                 input_dir=self.root / "data" / "raw",
                 output_dir=self.root / "data" / "processed" / "macro",
                 sources=["fred", "ecb"],
             )
             normalized = normalizer.preprocess(start_date=None, end_date=None, backfill=True)
-
-            # Prefer reporting normalized rows when available (single consolidated result)
             if normalized:
-                try:
-                    norm_rows = sum(len(df) for df in normalized.values())
-                    rows_written = int(norm_rows)
-                except Exception:
-                    # Fallback to Bronze-collected row counts
-                    pass
+                rows_written = sum(len(df) for df in normalized.values())
 
             return CollectionResult(
                 source_id="fred_macro",
@@ -820,49 +762,34 @@ class CollectionOrchestrator:
         source_config,
         fetch_from,
     ) -> CollectionResult:  # pragma: no cover
-        """Collect ECB macro indicators."""
+        """Collect ECB macro indicators and rebuild the consolidated Silver macro file.
+
+        Responsibility: ECB Bronze only.  MacroNormalizer reads both FRED and ECB
+        Bronze from disk, so running it here keeps Silver fresh whenever ECB updates.
+        FRED Bronze collection is the sole responsibility of _collect_fred_macro.
+        """
         try:
             from src.ingestion.collectors.ecb_collector import ECBCollector
             from src.ingestion.preprocessors.macro_normalizer import MacroNormalizer
 
-            # Determine date window (UTC-aware)
             end_dt = datetime.now(timezone.utc)
             if fetch_from is not None:
                 start_dt = datetime(
                     fetch_from.year, fetch_from.month, fetch_from.day, tzinfo=timezone.utc
                 )
             else:
-                lookback_days = source_config.min_silver_days or int(
-                    max(source_config.interval_hours * 3 / 24, 72 / 24)
-                )
-                start_dt = end_dt - timedelta(days=lookback_days)
+                start_dt = end_dt - timedelta(days=source_config.min_silver_days or 730)
 
-            # Bronze directories and staleness
-            fred_bronze = self.root / "data" / "raw" / "fred"
             ecb_bronze = self.root / "data" / "raw" / "ecb"
             staleness_limit = timedelta(hours=max(source_config.interval_hours * 3, 72))
-
             rows_written = 0
 
-            fred_ok = self._bronze_has_recent_data(fred_bronze, staleness_limit, "**/*.csv")
-            ecb_ok = self._bronze_has_recent_data(ecb_bronze, staleness_limit, "**/*.csv")
-
-            # Collect missing sources
-            if not fred_ok:
-                from src.ingestion.collectors.fred_collector import FREDCollector
-
-                fred_collector = FREDCollector(api_key=None, output_dir=fred_bronze)
-                fred_counts = fred_collector.collect(start_date=start_dt, end_date=end_dt)
-                rows_written += sum(fred_counts.values())
+            if not self._bronze_has_recent_data(ecb_bronze, staleness_limit, "**/*.csv"):
+                collector = ECBCollector(output_dir=ecb_bronze)
+                ecb_counts = collector.collect(start_date=start_dt, end_date=end_dt)
+                rows_written = sum(ecb_counts.values())
             else:
-                self.logger.info("ecb_macro: FRED Bronze is recent — skipping FRED network fetch")
-
-            if not ecb_ok:
-                ecb_collector = ECBCollector(output_dir=ecb_bronze)
-                ecb_counts = ecb_collector.collect(start_date=start_dt, end_date=end_dt)
-                rows_written += sum(ecb_counts.values())
-            else:
-                self.logger.info("ecb_macro: ECB Bronze is recent — skipping ECB network fetch")
+                self.logger.info("ecb_macro: ECB Bronze is recent — skipping network fetch")
 
             normalizer = MacroNormalizer(
                 input_dir=self.root / "data" / "raw",
@@ -870,13 +797,8 @@ class CollectionOrchestrator:
                 sources=["fred", "ecb"],
             )
             normalized = normalizer.preprocess(start_date=None, end_date=None, backfill=True)
-
             if normalized:
-                try:
-                    norm_rows = sum(len(df) for df in normalized.values())
-                    rows_written = int(norm_rows)
-                except Exception:
-                    pass
+                rows_written = sum(len(df) for df in normalized.values())
 
             return CollectionResult(
                 source_id="ecb_macro",
@@ -1099,12 +1021,73 @@ class CollectionOrchestrator:
                 error=str(e),
             )
 
-    def _collect_stocktwits(self, source_config, fetch_from) -> int:  # pragma: no cover
-        """Collect StockTwits sentiment."""
-        raise NotImplementedError(
-            "StockTwits collector not yet integrated. "
-            "Awaiting StockTwitsCollector interface finalization."
-        )
+    def _collect_stocktwits(
+        self, source_config, fetch_from
+    ) -> CollectionResult:  # pragma: no cover
+        """Collect StockTwits posts and run FinTwitBERT inference → Silver checkpoint.
+
+        Collector appends new posts to per-symbol Bronze JSONL files (incremental by cursor).
+        Preprocessor skips already-labeled message_ids, so both stages are safe to re-run.
+        """
+        try:
+            from src.ingestion.collectors.stocktwits_collector import StocktwitsCollector
+            from src.ingestion.preprocessors.stocktwits_preprocessor import StocktwitsPreprocessor
+
+            bronze_dir = self.root / "data" / "raw" / "news" / "stocktwits"
+            checkpoint_path = (
+                self.root
+                / "data"
+                / "processed"
+                / "sentiment"
+                / "source=stocktwits"
+                / "labels_checkpoint.jsonl"
+            )
+            model_dir = self.root / "models" / "sentiment" / "stocktwits"
+            staleness_limit = timedelta(hours=max(source_config.interval_hours * 3, 72))
+
+            end_dt = datetime.now(timezone.utc)
+            if fetch_from is not None:
+                start_dt = datetime(
+                    fetch_from.year, fetch_from.month, fetch_from.day, tzinfo=timezone.utc
+                )
+            else:
+                min_days = (
+                    source_config.min_silver_days or StocktwitsCollector.DEFAULT_LOOKBACK_DAYS
+                )
+                start_dt = end_dt - timedelta(days=min_days)
+
+            rows_collected = 0
+            if self._bronze_has_recent_data(bronze_dir, staleness_limit, glob_pattern="**/*.jsonl"):
+                self.logger.info("stocktwits: Bronze is recent — skipping network fetch")
+            else:
+                collector = StocktwitsCollector(output_dir=bronze_dir)
+                result_counts = collector.collect(
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    backfill=fetch_from is None,
+                )
+                rows_collected = sum(result_counts.values())
+
+            preprocessor = StocktwitsPreprocessor(
+                raw_dir=bronze_dir,
+                checkpoint_path=checkpoint_path,
+                model_dir=model_dir,
+            )
+            rows_written = preprocessor.run()
+
+            return CollectionResult(
+                source_id="stocktwits",
+                rows_written=rows_written or rows_collected,
+                backfill_performed=fetch_from is None,
+                error=None,
+            )
+        except Exception as e:
+            return CollectionResult(
+                source_id="stocktwits",
+                rows_written=0,
+                backfill_performed=fetch_from is None,
+                error=str(e),
+            )
 
     def _collect_forex_factory(self, source_config, fetch_from) -> int:  # pragma: no cover
         """Collect Forex Factory economic calendar."""
@@ -1131,7 +1114,7 @@ class CollectionOrchestrator:
         end_dt = dt_class.utcnow()
 
         # Collect Bronze with try/finally to ensure driver cleanup
-        collector = ForexFactoryCalendarCollector(output_dir=bronze_dir)
+        collector = ForexFactoryCalendarCollector(output_dir=bronze_dir, headless=False)
         rows_from_bronze = 0
         try:
             if is_backfill and self._bronze_has_recent_data(

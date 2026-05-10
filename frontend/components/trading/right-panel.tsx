@@ -26,6 +26,10 @@ import {
   toActionLabel,
   toConfidenceLabel,
 } from "@/lib/api";
+import { LiveTick } from "@/lib/api";
+import { toast } from "sonner";
+import { useTrade } from "@/hooks/use-trade";
+import { usePositions } from "@/hooks/use-positions";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,28 +99,52 @@ function buildPairCalls(
 
 interface OrderControlsProps {
   symbol: string;
+  liveTick?: LiveTick | null;
 }
 
-function OrderControls({ symbol }: OrderControlsProps) {
+function OrderControls({ symbol, liveTick }: OrderControlsProps) {
   const [orderType, setOrderType] = useState<"market" | "pending">("market");
   const [size, setSize] = useState("0.10");
   const [sl, setSl] = useState("");
   const [tp, setTp] = useState("");
+  const [orderError, setOrderError] = useState<string | null>(null);
 
-  const bidPrice = "1.0842";
-  const askPrice = "1.0844";
-  const spread = "2.0";
+  const bidPrice = liveTick?.bid.toFixed(5) ?? "—";
+  const askPrice = liveTick?.ask.toFixed(5) ?? "—";
+  const spread = liveTick?.spreadPips.toFixed(1) ?? "—";
+
+  const { openOrder, isPending } = useTrade();
+
+  const place = async (side: "BUY" | "SELL") => {
+    setOrderError(null);
+    try {
+      const result = await openOrder({
+        pair: symbol,
+        side,
+        volume: parseFloat(size) || 0.01,
+        sl: sl ? parseFloat(sl) : undefined,
+        tp: tp ? parseFloat(tp) : undefined,
+      });
+      if (result.success) {
+        toast.success(` ${side} filled @ ${result.fillPrice?.toFixed(5)} — ticket #${result.ticket}`);
+      } else {
+        setOrderError(result.errorMessage ?? "Order failed");
+      }
+    } catch (err: unknown) {
+      setOrderError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   return (
     <div className="space-y-3 border-t border-border p-3">
       <div className="flex gap-2">
-        <Button className="h-9 flex-1 bg-[var(--buy)] text-white hover:bg-[var(--buy)]/90" size="sm">
+        <Button disabled={isPending} onClick={() => place("BUY")} className="h-9 flex-1 bg-[var(--buy)] text-white hover:bg-[var(--buy)]/90" size="sm">
           <div className="flex flex-col items-center">
             <span className="text-[10px] font-normal">BUY</span>
             <span className="font-mono text-xs">{askPrice}</span>
           </div>
         </Button>
-        <Button className="h-9 flex-1 bg-[var(--sell)] text-white hover:bg-[var(--sell)]/90" size="sm">
+        <Button disabled={isPending} onClick={() => place("SELL")} className="h-9 flex-1 bg-[var(--sell)] text-white hover:bg-[var(--sell)]/90" size="sm">
           <div className="flex flex-col items-center">
             <span className="text-[10px] font-normal">SELL</span>
             <span className="font-mono text-xs">{bidPrice}</span>
@@ -174,7 +202,12 @@ function OrderControls({ symbol }: OrderControlsProps) {
         </div>
       </div>
 
-      <Button className="h-8 w-full text-xs">Place Order</Button>
+      <div>
+        <Button className="h-8 w-full text-xs" disabled={isPending}>
+          {isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : "Place Order"}
+        </Button>
+        {orderError && <div className="mt-2 text-xs text-red-600">{orderError}</div>}
+      </div>
     </div>
   );
 }
@@ -187,6 +220,7 @@ interface RightPanelProps {
   report?: CoordinatorReportAPI | null;
   coordinatorSignals?: Map<string, CoordinatorSignalAPI>;
   agentSignals?: Map<string, AgentSignalAPI>;
+  liveTick?: LiveTick | null;
 }
 
 export function RightPanel({
@@ -195,6 +229,7 @@ export function RightPanel({
   report,
   coordinatorSignals,
   agentSignals,
+  liveTick,
 }: RightPanelProps) {
   const [analysisRevealed, setAnalysisRevealed] = useState(false);
   const [activePairTab, setActivePairTab] = useState(symbol);
@@ -265,6 +300,8 @@ export function RightPanel({
   const sentimentMock = mockAgentReport.sentiment[0];
 
   const reportHref = getReportPath(activePair.symbol);
+  const { positions, account } = usePositions();
+  const { closePosition } = useTrade();
 
   return (
     <aside
@@ -354,7 +391,6 @@ export function RightPanel({
         )}
 
         {/* Analysis content */}
-        {analysisRevealed && (
         <div style={{ animation: 'rp-content-reveal 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
         {/* Today's Call */}
         <div className="border-b border-border p-3">
@@ -679,10 +715,62 @@ export function RightPanel({
           </div>
         </div>
         </div>
-        )}
+          <div className="border-t border-border p-3">
+            <div className="grid grid-cols-4 gap-2 text-[10px] mb-2">
+              <div>
+                <div className="text-muted-foreground">Balance</div>
+                <div className="font-mono text-xs">{account ? `$${account.balance.toFixed(2)}` : "—"}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Equity</div>
+                <div className="font-mono text-xs">{account ? `$${account.equity.toFixed(2)}` : "—"}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Free Margin</div>
+                <div className="font-mono text-xs">{account ? `$${account.marginFree.toFixed(2)}` : "—"}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Margin Level</div>
+                <div className="font-mono text-xs">{account ? `${Math.round(account.marginLevel)}%` : "—"}</div>
+              </div>
+            </div>
+
+            <div className="text-[10px] text-muted-foreground">Positions</div>
+            {positions && positions.length > 0 ? (
+              <div className="mt-2">
+                <div className="grid grid-cols-6 gap-2 text-[10px] font-semibold">
+                  <div>Pair</div>
+                  <div>Side</div>
+                  <div>Lots</div>
+                  <div>Entry</div>
+                  <div>Current</div>
+                  <div className="text-right">P&L</div>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {positions.map((pos) => (
+                    <div key={pos.ticket} className="grid grid-cols-6 gap-2 items-center text-[10px]">
+                      <div>{pos.symbol}</div>
+                      <div>{pos.side}</div>
+                      <div>{pos.volume}</div>
+                      <div className="font-mono">{pos.openPrice.toFixed(5)}</div>
+                      <div className="font-mono">{pos.currentPrice.toFixed(5)}</div>
+                      <div className="flex items-center justify-end gap-2">
+                        <div className={pos.profit >= 0 ? "text-[10px] text-emerald-600 font-medium" : "text-[10px] text-red-600 font-medium"}>{pos.profit.toFixed(2)}</div>
+                        <button className="text-muted-foreground" onClick={async () => { await closePosition(pos.ticket); }}>
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 text-muted-foreground text-[10px]">No open positions</div>
+            )}
+          </div>
       </div>
 
-      <OrderControls symbol={activePair.symbol} />
+      <OrderControls symbol={activePair.symbol} liveTick={liveTick} />
     </aside>
   );
 }

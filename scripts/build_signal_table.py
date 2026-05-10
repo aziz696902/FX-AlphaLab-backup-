@@ -60,7 +60,7 @@ print("  ok")
 print("Loading sentiment agent...")
 sent_agent = SentimentAgent(
     stocktwits_node=StocktwitsSignalNode(
-        checkpoint_path=ROOT / "data/processed/sentiment/source=stockwits/labels_checkpoint.jsonl"
+        checkpoint_path=ROOT / "data/processed/sentiment/source=stocktwits/labels_checkpoint.jsonl"
     ),
     reddit_node=RedditSignalNode(
         checkpoint_path=ROOT

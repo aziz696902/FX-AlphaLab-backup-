@@ -1,21 +1,31 @@
 """FastAPI application entry point for FX-AlphaLab backend.
 
 Usage:
-    uvicorn src.backend.main:app --reload --port 8000
+    uvicorn src.backend.main:app --port 8000
+
+CRITICAL: Do NOT use --reload with MT5. The MT5 connection must be initialized
+in a single process and cannot be re-initialized on file changes. This will cause
+crashes and resource leaks. Use --reload only for frontend development without
+live trading enabled.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.backend.routers import inference, ohlcv, reports, signals, trades
+from src.backend.routers import inference, live_data, ohlcv, reports, signals, trades, trading
 from src.backend.scheduler import SchedulerService
 from src.backend.schemas.admin import TriggerResult
 from src.ingestion.orchestrator import CollectionOrchestrator
+from src.live.candle_feed import CandleFeed, connection_manager
+from src.live.mt5_connection import mt5_connection
+from src.live.position_tracker import PositionTracker
+from src.live.trade_executor import TradeExecutor
 from src.shared.config import Config
 from src.shared.config.sources import load_sources_config
 
@@ -30,9 +40,13 @@ async def lifespan(app: FastAPI):
     - Load sources configuration from config/sources.yaml
     - Instantiate CollectionOrchestrator
     - Create and start SchedulerService
+    - Initialize MT5 connection (if MT5 credentials configured)
+    - Create and start CandleFeed and PositionTracker tasks
 
     Shutdown:
-    - Gracefully shut down the scheduler
+    - Gracefully shut down background tasks
+    - Close MT5 connection
+    - Shut down the scheduler
     """
     # ── Startup ─────────────────────────────────────────────────────────────
     logger.info("Starting FX-AlphaLab backend")
@@ -67,16 +81,98 @@ async def lifespan(app: FastAPI):
     app.state.orchestrator = orchestrator
     app.state.scheduler = scheduler
 
+    # ── MT5 Live Trading Layer Initialization ──────────────────────────────
+    mt5_tasks = []
+    try:
+        if Config.MT5_LOGIN and Config.MT5_PASSWORD and Config.MT5_SERVER:
+            logger.info("Initializing MT5 connection...")
+            try:
+                await mt5_connection.initialize()
+                logger.info("MT5 connection initialized successfully")
+
+                # Create trade executor singleton
+                import src.live.trade_executor as te_module
+
+                te_module.trade_executor = TradeExecutor(mt5_connection)
+
+                # Create and start CandleFeed task
+                import src.live.candle_feed as cf_module
+
+                cf_module.candle_feed = CandleFeed(mt5_connection, connection_manager)
+                candle_feed_task = asyncio.create_task(cf_module.candle_feed.run())
+                mt5_tasks.append(("candle_feed", candle_feed_task, cf_module.candle_feed))
+                logger.info("CandleFeed task started")
+
+                # Create and start PositionTracker task
+                import src.live.position_tracker as pt_module
+
+                pt_module.position_tracker = PositionTracker(mt5_connection)
+                position_tracker_task = asyncio.create_task(pt_module.position_tracker.run())
+                mt5_tasks.append(
+                    ("position_tracker", position_tracker_task, pt_module.position_tracker)
+                )
+                logger.info("PositionTracker task started")
+
+                # Broadcast connection status to all clients
+                await connection_manager.broadcast(
+                    "positions",
+                    {
+                        "type": "status",
+                        "state": "connected",
+                        "message": "MT5 live trading connected",
+                    },
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to initialize MT5 connection: {e}")
+                # Continue without live trading if MT5 not available
+                logger.info("Continuing without live trading support")
+        else:
+            logger.info("MT5 credentials not configured. Live trading disabled.")
+
+    except Exception as e:
+        logger.error(f"Unexpected error during MT5 initialization: {e}")
+
+    # Store MT5 tasks for shutdown
+    app.state.mt5_tasks = mt5_tasks
+
     yield
 
     # ── Shutdown ────────────────────────────────────────────────────────────
     logger.info("Shutting down FX-AlphaLab backend")
+
+    # Shut down MT5 background tasks
+    try:
+        if hasattr(app.state, "mt5_tasks"):
+            for task_name, task, controller in app.state.mt5_tasks:
+                logger.info(f"Stopping {task_name}...")
+                controller.stop()
+                # Give task 2s to finish gracefully
+                try:
+                    await asyncio.wait_for(task, timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"{task_name} did not finish within 2s, cancelling")
+                    task.cancel()
+                logger.info(f"{task_name} stopped")
+    except Exception:
+        logger.exception("Error shutting down MT5 tasks")
+
+    # Close MT5 connection
+    try:
+        if mt5_connection._initialized:
+            await mt5_connection.shutdown()
+            logger.info("MT5 connection closed")
+    except Exception:
+        logger.exception("Error closing MT5 connection")
+
+    # Shut down scheduler
     if hasattr(app.state, "scheduler") and app.state.scheduler is not None:
         try:
             app.state.scheduler.shutdown()
             logger.info("Scheduler service shut down")
         except Exception:
             logger.exception("Error while shutting down scheduler")
+
     # Close orchestrator if present
     if hasattr(app.state, "orchestrator") and app.state.orchestrator is not None:
         try:
@@ -98,7 +194,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "WEBSOCKET"],
     allow_headers=["*"],
 )
 
@@ -107,6 +203,8 @@ app.include_router(signals.router)
 app.include_router(trades.router)
 app.include_router(inference.router)
 app.include_router(ohlcv.router)
+app.include_router(live_data.router)
+app.include_router(trading.router)
 
 
 @app.post("/admin/trigger/{source_id}", tags=["admin"], response_model=TriggerResult)
@@ -120,15 +218,11 @@ def admin_trigger(source_id: str):
 
     orchestrator = app.state.orchestrator
 
-    # Run the source and obtain a CollectionResult
+    if source_id not in orchestrator.config.sources:
+        raise HTTPException(status_code=422, detail=f"Unknown source: {source_id!r}")
+
     result = orchestrator.run_source(source_id, force=True)
 
-    # If the source is unknown according to configured sources, return 422
-    if source_id not in getattr(orchestrator, "config", {}).sources:
-        # pass through orchestrator error when available
-        raise HTTPException(status_code=422, detail=result.error or "Unknown source")
-
-    # If orchestrator returned an error, return 500
     if result.error is not None:
         raise HTTPException(status_code=500, detail=result.error)
 

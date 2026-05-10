@@ -146,27 +146,34 @@ class GDELTEventsCollector(BaseCollector):
         output_dir: Path,
         log_file: Path | None = None,
         sleep_between: float = 1.5,
+        download_timeout: float = 600.0,
     ) -> None:
         super().__init__(output_dir=output_dir, log_file=log_file)
         self.sleep_between = float(sleep_between)
+        self.download_timeout = float(download_timeout)
 
     def _day_path(self, d: date) -> Path:
         return self.output_dir / f"{d.year}" / f"{d.month:02d}" / f"{d.strftime('%Y%m%d')}.parquet"
 
     def _download_zip(self, d: date) -> bytes | None:
         url = f"http://data.gdeltproject.org/events/{d.strftime('%Y%m%d')}.export.CSV.zip"
-        try:
-            resp = requests.get(url, timeout=10)
-            if resp.status_code == 200:
-                return resp.content
-            if resp.status_code == 404:
-                self.logger.warning("GDELT file not found: %s", url)
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, timeout=self.download_timeout)
+                if resp.status_code == 200:
+                    return resp.content
+                if resp.status_code == 404:
+                    self.logger.warning("GDELT file not found: %s", url)
+                    return None
+                self.logger.warning("GDELT unexpected status %s for %s", resp.status_code, url)
                 return None
-            self.logger.warning("GDELT unexpected status %s for %s", resp.status_code, url)
-            return None
-        except requests.RequestException as exc:
-            self.logger.warning("GDELT download error for %s: %s", url, exc)
-            return None
+            except requests.RequestException as exc:
+                self.logger.warning(
+                    "GDELT download error (attempt %d/3) for %s: %s", attempt + 1, url, exc
+                )
+                if attempt < 2:
+                    time.sleep(5)
+        return None
 
     def _parse_and_filter(self, content: bytes) -> pd.DataFrame:
         try:

@@ -147,3 +147,210 @@ export function toConfidenceLabel(tier: string | null): string {
   if (tier === "low") return "1/3";
   return "—";
 }
+
+// Derive WS base from API_BASE (handles http→ws and https→wss)
+export const WS_BASE = API_BASE.replace(/^http/, "ws");
+
+export type LiveStatus = "connecting" | "connected" | "reconnecting" | "offline";
+
+export interface LiveTick {
+  pair: string;
+  bid: number;
+  ask: number;
+  spreadPips: number;
+  timeMs: number;
+}
+
+export interface LivePosition {
+  ticket: number;
+  symbol: string;
+  side: "BUY" | "SELL";
+  volume: number;
+  openPrice: number;
+  currentPrice: number;
+  sl: number;
+  tp: number;
+  profit: number;
+  swap: number;
+  openTime: string;
+}
+
+export interface LiveAccount {
+  balance: number;
+  equity: number;
+  margin: number;
+  marginFree: number;
+  marginLevel: number;
+  profit: number;
+}
+
+export interface TradeRequest {
+  pair: string;
+  side: "BUY" | "SELL";
+  volume: number;
+  orderType?: "MARKET" | "LIMIT" | "STOP";
+  price?: number;
+  sl?: number;
+  tp?: number;
+  comment?: string;
+}
+
+export interface TradeResult {
+  success: boolean;
+  ticket?: number | null;
+  retcode: number;
+  fillPrice?: number | null;
+  volumeFilled?: number | null;
+  errorMessage?: string | null;
+}
+
+export interface LivePendingOrder {
+  ticket: number;
+  symbol: string;
+  type: string;   // "BUY_LIMIT" | "SELL_LIMIT" | "BUY_STOP" | "SELL_STOP" | etc.
+  volume: number;
+  price: number;  // trigger price
+  sl: number;
+  tp: number;
+  timeSetup: string;  // ISO datetime
+}
+
+export interface HistoricalTrade {
+  ticket: number;
+  symbol: string;
+  side: "BUY" | "SELL";
+  volume: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  entryTime: string;
+  exitTime: string | null;
+  profit: number;
+  swap: number;
+}
+
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`${res.status} ${path}`);
+  return res.json() as Promise<T>;
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`${res.status} ${path}`);
+  return res.json() as Promise<T>;
+}
+
+export async function openTrade(req: TradeRequest): Promise<TradeResult> {
+  const r = await post<Record<string, unknown>>("/trade/open", req);
+  return {
+    success: Boolean(r.success),
+    ticket: r.ticket == null ? null : Number(r.ticket),
+    retcode: Number(r.retcode ?? 0),
+    fillPrice: r.fill_price == null ? null : Number(r.fill_price),
+    volumeFilled: r.volume_filled == null ? null : Number(r.volume_filled),
+    errorMessage: r.error_message == null ? null : String(r.error_message),
+  };
+}
+
+export async function closeTrade(ticket: number): Promise<TradeResult> {
+  const r = await post<Record<string, unknown>>(`/trade/close/${ticket}`);
+  return {
+    success: Boolean(r.success),
+    ticket: r.ticket == null ? null : Number(r.ticket),
+    retcode: Number(r.retcode ?? 0),
+    fillPrice: r.fill_price == null ? null : Number(r.fill_price),
+    volumeFilled: r.volume_filled == null ? null : Number(r.volume_filled),
+    errorMessage: r.error_message == null ? null : String(r.error_message),
+  };
+}
+
+export async function closeAllTrades(): Promise<TradeResult[]> {
+  const r = await post<Record<string, unknown>[]>(`/trade/close-all`);
+  return r.map((it) => ({
+    success: Boolean(it.success),
+    ticket: it.ticket == null ? null : Number(it.ticket),
+    retcode: Number(it.retcode ?? 0),
+    fillPrice: it.fill_price == null ? null : Number(it.fill_price),
+    volumeFilled: it.volume_filled == null ? null : Number(it.volume_filled),
+    errorMessage: it.error_message == null ? null : String(it.error_message),
+  }));
+}
+
+export async function fetchPositions(): Promise<LivePosition[]> {
+  const r = await get<Record<string, unknown>[]>(`/trade/positions`);
+  return r.map((p) => ({
+    ticket: Number(p.ticket),
+    symbol: String(p.symbol),
+    side: (String(p.side) as "BUY" | "SELL"),
+    volume: Number(p.volume),
+    openPrice: Number(p.open_price),
+    currentPrice: Number(p.current_price),
+    sl: Number(p.sl ?? 0),
+    tp: Number(p.tp ?? 0),
+    profit: Number(p.profit ?? 0),
+    swap: Number(p.swap ?? 0),
+    openTime: String(p.open_time ?? ""),
+  }));
+}
+
+export async function fetchAccount(): Promise<LiveAccount> {
+  const r = await get<Record<string, unknown>>(`/trade/account`);
+  return {
+    balance: Number(r.balance ?? 0),
+    equity: Number(r.equity ?? 0),
+    margin: Number(r.margin ?? 0),
+    marginFree: Number(r.margin_free ?? 0),
+    marginLevel: Number(r.margin_level ?? 0),
+    profit: Number(r.profit ?? 0),
+  };
+}
+
+export async function fetchPendingOrders(): Promise<LivePendingOrder[]> {
+  const r = await get<Record<string, unknown>[]>(`/trade/orders`);
+  return r.map((o) => ({
+    ticket: Number(o.ticket),
+    symbol: String(o.symbol),
+    type: String(o.type),
+    volume: Number(o.volume),
+    price: Number(o.price),
+    sl: Number(o.sl ?? 0),
+    tp: Number(o.tp ?? 0),
+    timeSetup: String(o.time_setup ?? ""),
+  }));
+}
+
+export async function fetchTradeHistory(days = 30): Promise<HistoricalTrade[]> {
+  const r = await get<Record<string, unknown>[]>(`/trade/history?days=${days}`);
+  return r.map((t) => ({
+    ticket: Number(t.ticket),
+    symbol: String(t.symbol),
+    side: String(t.side) as "BUY" | "SELL",
+    volume: Number(t.volume),
+    entryPrice: Number(t.entry_price),
+    exitPrice: t.exit_price == null ? null : Number(t.exit_price),
+    entryTime: String(t.entry_time ?? ""),
+    exitTime: t.exit_time == null ? null : String(t.exit_time),
+    profit: Number(t.profit ?? 0),
+    swap: Number(t.swap ?? 0),
+  }));
+}
+
+export async function cancelOrder(ticket: number): Promise<TradeResult> {
+  const r = await del<Record<string, unknown>>(`/trade/orders/${ticket}`);
+  return {
+    success: Boolean(r.success),
+    ticket: r.ticket == null ? null : Number(r.ticket),
+    retcode: Number(r.retcode ?? 0),
+    fillPrice: r.fill_price == null ? null : Number(r.fill_price),
+    volumeFilled: r.volume_filled == null ? null : Number(r.volume_filled),
+    errorMessage: r.error_message == null ? null : String(r.error_message),
+  };
+}

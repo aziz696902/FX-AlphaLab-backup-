@@ -1,7 +1,7 @@
 """Tests for CollectionOrchestrator collector method implementations.
 
 Tests the four implemented collector stubs:
-- _collect_dukascopy_* (D1, H4, H1)
+- _collect_dukascopy_* (ohlcv, H4, H1)
 - _collect_gdelt_events
 - _collect_gdelt_gkg
 - _collect_forex_factory
@@ -24,7 +24,7 @@ def test_config():
     """Create minimal SourcesConfig with all four collector sources."""
     return SourcesConfig(
         sources={
-            "dukascopy_d1": SourceConfig(
+            "dukascopy_ohlcv": SourceConfig(
                 enabled=True,
                 interval_hours=24,
                 min_silver_days=400,
@@ -119,7 +119,7 @@ class TestDukascopyCollectors:
             ),
         ):
             orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=None,
             )
 
@@ -149,7 +149,7 @@ class TestDukascopyCollectors:
             ),
         ):
             orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=fetch_from_date,
             )
 
@@ -190,7 +190,7 @@ class TestDukascopyCollectors:
             for fetch_from in [None, date(2026, 5, 2)]:
                 mock_preprocessor.reset_mock()
                 orchestrator._collect_dukascopy(
-                    source_config=orchestrator.config.sources["dukascopy_d1"],
+                    source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                     fetch_from=fetch_from,
                 )
                 mock_preprocessor.preprocess.assert_called_once()
@@ -224,7 +224,7 @@ class TestDukascopyCollectors:
             ),
         ):
             rows = orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=None,
             )
 
@@ -247,8 +247,8 @@ class TestDukascopyCollectors:
             ),
         ):
             # All three stubs should produce same result
-            result_d1 = orchestrator._collect_dukascopy_d1(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+            result_d1 = orchestrator._collect_dukascopy_ohlcv(
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=date(2026, 5, 2),
             )
             result_h4 = orchestrator._collect_dukascopy_h4(

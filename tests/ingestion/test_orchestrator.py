@@ -18,7 +18,7 @@ def test_config():
     """Create a minimal test SourcesConfig."""
     return SourcesConfig(
         sources={
-            "dukascopy_d1": SourceConfig(
+            "dukascopy_ohlcv": SourceConfig(
                 enabled=True,
                 interval_hours=24,
                 min_silver_days=400,
@@ -86,7 +86,7 @@ class TestCollectionOrchestrator:
     def test_initialization(self, orchestrator, temp_root, test_config):
         assert orchestrator.config == test_config
         assert orchestrator.root == temp_root
-        assert len(orchestrator._registry) == 13
+        assert len(orchestrator._registry) == 14
 
     def test_invalid_source_id(self, orchestrator):
         result = orchestrator.run_source("unknown_source")
@@ -104,10 +104,10 @@ class TestCollectionOrchestrator:
         import shutil
 
         shutil.rmtree(temp_root / "data" / "processed" / "ohlcv")
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is False
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is False
 
     def test_silver_has_minimum_empty_directory(self, orchestrator):
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is False
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is False
 
     def test_silver_has_minimum_parquet_below_threshold(self, orchestrator, temp_root):
         ohlcv_dir = temp_root / "data" / "processed" / "ohlcv"
@@ -123,7 +123,7 @@ class TestCollectionOrchestrator:
             }
         )
         df.to_parquet(ohlcv_dir / "ohlcv_EURUSD_D1_20240101_20240410.parquet")
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is False
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is False
 
     def test_silver_has_minimum_parquet_meets_threshold(self, orchestrator, temp_root):
         from datetime import datetime, timedelta, timezone
@@ -144,27 +144,20 @@ class TestCollectionOrchestrator:
         )
         df.to_parquet(ohlcv_dir / "ohlcv_EURUSD_D1_20250115_20250825.parquet")
         # 500 rows >= 400 (min_silver_days) AND data is fresh → should return True
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is True
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is True
 
     def test_silver_has_minimum_null_min_silver_days(self, orchestrator):
         # google_trends has min_silver_days=None → always returns False
         assert orchestrator._silver_has_minimum("google_trends") is False
 
     def test_silver_has_minimum_macro_signal_meets_threshold(self, orchestrator, temp_root):
-        from datetime import datetime, timedelta, timezone
-
+        # _silver_has_minimum for fred_macro checks macro_all.parquet mtime, not row count.
+        # Write a fresh macro_all.parquet so the staleness check passes.
         macro_dir = temp_root / "data" / "processed" / "macro"
-        # 800 rows with max timestamp = 1 day ago (within staleness_limit)
-        recent_end = datetime.now(timezone.utc) - timedelta(days=1)
-        df = pd.DataFrame(
-            {
-                "timestamp_utc": pd.date_range(recent_end - timedelta(days=799), periods=800),
-                "pair": "EURUSD",
-                "feature1": 1.0,
-            }
+        pd.DataFrame({"series_id": ["GDP"], "value": [1.0]}).to_parquet(
+            macro_dir / "macro_all.parquet"
         )
-        df.to_parquet(macro_dir / "macro_signal.parquet")
-        # 800 rows >= 730 (min_silver_days) AND data is fresh → should return True
+        # File just written → age_seconds ≈ 0, well within staleness_limit → True
         assert orchestrator._silver_has_minimum("fred_macro") is True
 
     def test_silver_has_minimum_macro_signal_below_threshold(self, orchestrator, temp_root):
@@ -246,7 +239,7 @@ class TestCollectionOrchestrator:
         )
         df.to_parquet(ohlcv_dir / "ohlcv_EURUSD_D1_20250101_20250815.parquet")
         # Even though 500 > 400 (min_silver_days), data is stale → should return False
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is False
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is False
 
     def test_silver_recent_and_sufficient(self, orchestrator, temp_root):
         """Test that recent Silver with sufficient rows returns True."""
@@ -268,7 +261,7 @@ class TestCollectionOrchestrator:
         )
         df.to_parquet(ohlcv_dir / "ohlcv_EURUSD_D1_20240901_20250815.parquet")
         # 500 rows > 400 (min_silver_days) AND data is fresh → should return True
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is True
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is True
 
     def test_silver_recent_but_insufficient_rows(self, orchestrator, temp_root):
         """Test that recent Silver but insufficient rows still returns False."""
@@ -290,7 +283,7 @@ class TestCollectionOrchestrator:
         )
         df.to_parquet(ohlcv_dir / "ohlcv_EURUSD_D1_20250805_20250815.parquet")
         # 10 rows < 400 (min_silver_days) → should return False (row count gate applies first)
-        assert orchestrator._silver_has_minimum("dukascopy_d1") is False
+        assert orchestrator._silver_has_minimum("dukascopy_ohlcv") is False
 
     def test_silver_stale_macro_signal_forces_backfill(self, orchestrator, temp_root):
         """Test that stale macro_signal.parquet forces backfill even with sufficient rows."""
@@ -343,56 +336,53 @@ class TestCollectionOrchestrator:
         assert start_date is not None
         assert getattr(start_date, "tzinfo", None) is not None
 
-    def test_fred_macro_collects_ecb_when_ecb_bronze_absent(self, orchestrator):
-        from unittest.mock import Mock, patch
-
+    def test_fred_macro_does_not_collect_ecb(self, orchestrator):
+        """_collect_fred_macro owns FRED Bronze only; ECBCollector must never be called."""
         mock_fred = Mock()
-        mock_fred.collect.return_value = {
-            "S": pd.DataFrame({"timestamp_utc": [pd.Timestamp.now()]})
-        }
+        mock_fred.collect.return_value = {"gdp": 10}
         mock_ecb = Mock()
-        mock_ecb.collect.return_value = {"policy_rates": 5}
-
-        def bronze_side(bronze_dir, staleness_limit, glob_pattern="**/*.csv"):
-            return bronze_dir.name == "fred"
+        mock_normalizer = Mock()
+        mock_normalizer.preprocess.return_value = {}
 
         with (
             patch("src.ingestion.collectors.fred_collector.FREDCollector", return_value=mock_fred),
             patch("src.ingestion.collectors.ecb_collector.ECBCollector", return_value=mock_ecb),
-            patch.object(orchestrator, "_bronze_has_recent_data", side_effect=bronze_side),
+            patch(
+                "src.ingestion.preprocessors.macro_normalizer.MacroNormalizer",
+                return_value=mock_normalizer,
+            ),
+            patch.object(orchestrator, "_bronze_has_recent_data", return_value=False),
         ):
             orchestrator._collect_fred_macro(
                 source_config=orchestrator.config.sources["fred_macro"], fetch_from=None
             )
 
-        # FRED should be skipped (fred_ok True) and ECB collected
-        mock_fred.collect.assert_not_called()
-        mock_ecb.collect.assert_called_once()
+        mock_fred.collect.assert_called_once()
+        mock_ecb.collect.assert_not_called()
 
-    def test_ecb_macro_collects_fred_when_fred_bronze_absent(self, orchestrator):
-        from unittest.mock import Mock, patch
-
-        mock_fred = Mock()
-        mock_fred.collect.return_value = {
-            "S": pd.DataFrame({"timestamp_utc": [pd.Timestamp.now()]})
-        }
+    def test_ecb_macro_does_not_collect_fred(self, orchestrator):
+        """_collect_ecb_macro owns ECB Bronze only; FREDCollector must never be called."""
         mock_ecb = Mock()
         mock_ecb.collect.return_value = {"policy_rates": 5}
-
-        def bronze_side(bronze_dir, staleness_limit, glob_pattern="**/*.csv"):
-            return bronze_dir.name == "ecb"
+        mock_fred = Mock()
+        mock_normalizer = Mock()
+        mock_normalizer.preprocess.return_value = {}
 
         with (
-            patch("src.ingestion.collectors.fred_collector.FREDCollector", return_value=mock_fred),
             patch("src.ingestion.collectors.ecb_collector.ECBCollector", return_value=mock_ecb),
-            patch.object(orchestrator, "_bronze_has_recent_data", side_effect=bronze_side),
+            patch("src.ingestion.collectors.fred_collector.FREDCollector", return_value=mock_fred),
+            patch(
+                "src.ingestion.preprocessors.macro_normalizer.MacroNormalizer",
+                return_value=mock_normalizer,
+            ),
+            patch.object(orchestrator, "_bronze_has_recent_data", return_value=False),
         ):
             orchestrator._collect_ecb_macro(
-                source_config=orchestrator.config.sources["dukascopy_d1"], fetch_from=None
+                source_config=orchestrator.config.sources["fred_macro"], fetch_from=None
             )
 
-        mock_ecb.collect.assert_not_called()
-        mock_fred.collect.assert_called_once()
+        mock_ecb.collect.assert_called_once()
+        mock_fred.collect.assert_not_called()
 
     def test_macro_skips_both_collectors_when_both_bronze_fresh(self, orchestrator):
         from unittest.mock import Mock, patch
@@ -424,10 +414,10 @@ class TestCollectionOrchestrator:
         # Replace registry entry with stub returning CollectionResult with error
         def fake_collector(source_config, fetch_from):
             return CollectionResult(
-                source_id="dukascopy_d1", rows_written=0, backfill_performed=False, error="boom"
+                source_id="dukascopy_ohlcv", rows_written=0, backfill_performed=False, error="boom"
             )
 
-        orchestrator._registry["dukascopy_d1"] = fake_collector
+        orchestrator._registry["dukascopy_ohlcv"] = fake_collector
         # Patch silver check to avoid other paths
         orchestrator._silver_has_minimum = lambda sid: True
 
@@ -435,7 +425,7 @@ class TestCollectionOrchestrator:
         orchestrator.logger.error = Mock()
         orchestrator.logger.info = Mock()
 
-        res = orchestrator.run_source("dukascopy_d1")
+        res = orchestrator.run_source("dukascopy_ohlcv")
 
         assert res.error == "boom"
         orchestrator.logger.error.assert_called()
@@ -499,7 +489,7 @@ class TestCollectionOrchestrator:
             patch.object(orchestrator, "_bronze_has_recent_data", return_value=True),
         ):
             orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=None,
             )
 
@@ -524,7 +514,7 @@ class TestCollectionOrchestrator:
             patch.object(orchestrator, "_bronze_has_recent_data", return_value=False),
         ):
             orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=None,
             )
 
@@ -553,7 +543,7 @@ class TestCollectionOrchestrator:
             patch.object(orchestrator, "_bronze_has_recent_data", side_effect=has_recent),
         ):
             orchestrator._collect_dukascopy(
-                source_config=orchestrator.config.sources["dukascopy_d1"],
+                source_config=orchestrator.config.sources["dukascopy_ohlcv"],
                 fetch_from=None,
             )
 

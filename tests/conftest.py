@@ -54,3 +54,26 @@ if "MetaTrader5" not in sys.modules:
     mt5_stub = _make_stub("MetaTrader5")
     mt5_stub.initialize = lambda *a, **kw: False
     mt5_stub.shutdown = lambda: None
+    # Add MT5 constants needed for tests
+    mt5_stub.ACCOUNT_TRADE_MODE_DEMO = 0
+    mt5_stub.ACCOUNT_TRADE_MODE_REAL = 1
+    mt5_stub.SYMBOL_TRADE_MODE_FULL = 1
+    mt5_stub.TIMEFRAME_M1 = 1
+    mt5_stub.TIMEFRAME_M5 = 5
+    mt5_stub.TIMEFRAME_M15 = 15
+    mt5_stub.TIMEFRAME_M30 = 30
+    mt5_stub.TIMEFRAME_H1 = 60
+    mt5_stub.TIMEFRAME_H4 = 240
+    mt5_stub.TIMEFRAME_D1 = 1440
+    # Filling mode support bits (SYMBOL_FILLING_*)
+    mt5_stub.SYMBOL_FILLING_FOK = 0x01
+    mt5_stub.SYMBOL_FILLING_IOC = 0x02
+    mt5_stub.SYMBOL_FILLING_RETURN = 0x04
+    # Filling mode order values (ORDER_FILLING_*)
+    mt5_stub.ORDER_FILLING_FOK = 0
+    mt5_stub.ORDER_FILLING_IOC = 1
+    mt5_stub.ORDER_FILLING_RETURN = 2
+
+
+# --- pytest-asyncio configuration ----------------------------------------
+pytest_plugins = ("pytest_asyncio",)

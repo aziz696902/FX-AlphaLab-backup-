@@ -27,9 +27,11 @@ def client_and_mocks():
 
     routers_mod = types.ModuleType("src.backend.routers")
     routers_mod.inference = types.SimpleNamespace(router=APIRouter())
+    routers_mod.live_data = types.SimpleNamespace(router=APIRouter())
     routers_mod.ohlcv = types.SimpleNamespace(router=APIRouter())
     routers_mod.reports = types.SimpleNamespace(router=APIRouter())
     routers_mod.signals = types.SimpleNamespace(router=APIRouter())
+    routers_mod.trading = types.SimpleNamespace(router=APIRouter())
     routers_mod.trades = types.SimpleNamespace(router=APIRouter())
     sys.modules["src.backend.routers"] = routers_mod
 
@@ -45,7 +47,7 @@ def client_and_mocks():
 
     from src.backend import main as backend_main
 
-    # Build minimal sources config: one enabled (gdelt_events), one disabled (dukascopy_d1)
+    # Build minimal sources config: one enabled (gdelt_events), one disabled (dukascopy_ohlcv)
     sources = {
         "gdelt_events": SourceConfig(
             enabled=True,
@@ -54,7 +56,7 @@ def client_and_mocks():
             fetch_from=None,
             description="GDELT events",
         ),
-        "dukascopy_d1": SourceConfig(
+        "dukascopy_ohlcv": SourceConfig(
             enabled=False,
             interval_hours=24.0,
             min_silver_days=None,
@@ -71,14 +73,14 @@ def client_and_mocks():
     orchestrator_mock = MagicMock()
     orchestrator_mock.config = sources_config
 
-    def run_source_side_effect(sid: str):
+    def run_source_side_effect(sid: str, force: bool = False):
         if sid == "gdelt_events":
             return CollectionResult(
                 source_id="gdelt_events", rows_written=100, backfill_performed=True, error=None
             )
-        if sid == "dukascopy_d1":
+        if sid == "dukascopy_ohlcv":
             return CollectionResult(
-                source_id="dukascopy_d1",
+                source_id="dukascopy_ohlcv",
                 rows_written=0,
                 backfill_performed=False,
                 error="not yet integrated",
@@ -127,8 +129,8 @@ def test_health_returns_ok(client_and_mocks):
 
 def test_trigger_known_source_success(client_and_mocks):
     client = client_and_mocks["client"]
-    # dukascopy_d1 is present but returns an error string
-    r = client.post("/admin/trigger/dukascopy_d1")
+    # dukascopy_ohlcv is present but returns an error string
+    r = client.post("/admin/trigger/dukascopy_ohlcv")
     assert r.status_code == 500
     assert "not yet integrated" in r.json()["detail"]
 

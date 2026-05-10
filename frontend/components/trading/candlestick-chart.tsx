@@ -9,6 +9,8 @@ import {
   Time,
   CandlestickSeries,
 } from "lightweight-charts";
+import { LiveTick, LiveStatus } from "@/lib/api";
+import { useLiveCandles } from "@/hooks/use-live-candles";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useOhlcv } from "@/hooks/use-ohlcv";
@@ -31,27 +33,32 @@ interface CandlestickChartProps {
   symbol: string;
   coordinatorSignal: CoordinatorSignalAPI | null;
   report: CoordinatorReportAPI | null;
+  onTick?: (tick: LiveTick) => void;
 }
 
-type Timeframe = "M15" | "H1" | "H4" | "D1";
+type Timeframe = "M1" | "M15" | "H1" | "H4" | "D1";
 
 const TF_DAYS: Record<Timeframe, number> = {
+  M1: 1,
   M15: 7,
   H1: 30,
   H4: 90,
   D1: 365,
 };
 
-const TIMEFRAMES: Timeframe[] = ["M15", "H1", "H4", "D1"];
+const TIMEFRAMES: Timeframe[] = ["M1", "M15", "H1", "H4", "D1"];
 
-export function CandlestickChart({ symbol, coordinatorSignal, report }: CandlestickChartProps) {
+export function CandlestickChart({ symbol, coordinatorSignal, report, onTick }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const seriesRef = useRef<any>(null);
+  const initialLoadComplete = useRef(false);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [activeTimeframe, setActiveTimeframe] = useState<Timeframe>("H1");
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting");
+  const [liveTick, setLiveTick] = useState<LiveTick | null>(null);
 
   const { bars, loading: ohlcvLoading } = useOhlcv(symbol, activeTimeframe, TF_DAYS[activeTimeframe]);
 
@@ -68,87 +75,113 @@ export function CandlestickChart({ symbol, coordinatorSignal, report }: Candlest
 
   // ── Chart init ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    const container = chartContainerRef.current;
+    if (!container) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "#FFFFFF" },
-        textColor: "#6B7280",
-      },
-      grid: {
-        vertLines: { color: "#F0F2F5" },
-        horzLines: { color: "#F0F2F5" },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
-      crosshair: {
-        vertLine: { color: "#1F4AA8", width: 1, style: 2 },
-        horzLine: { color: "#1F4AA8", width: 1, style: 2 },
-      },
-      rightPriceScale: { borderColor: "#E3E6EA" },
-      timeScale: {
-        borderColor: "#E3E6EA",
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
+    let resizeObserver: ResizeObserver | null = null;
+    let deferredObserver: ResizeObserver | null = null;
+    let handleResize: (() => void) | null = null;
 
-    chartRef.current = chart;
+    const initializeChart = () => {
+      const { clientWidth, clientHeight } = container;
+      if (clientWidth <= 0 || clientHeight <= 0) return false;
 
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#0D9488",
-      downColor: "#DC2626",
-      borderUpColor: "#0D9488",
-      borderDownColor: "#DC2626",
-      wickUpColor: "#0D9488",
-      wickDownColor: "#DC2626",
-    });
+      const chart = createChart(container, {
+        layout: {
+          background: { type: ColorType.Solid, color: "#FFFFFF" },
+          textColor: "#6B7280",
+        },
+        grid: {
+          vertLines: { color: "#F0F2F5" },
+          horzLines: { color: "#F0F2F5" },
+        },
+        width: clientWidth,
+        height: clientHeight,
+        crosshair: {
+          vertLine: { color: "#1F4AA8", width: 1, style: 2 },
+          horzLine: { color: "#1F4AA8", width: 1, style: 2 },
+        },
+        rightPriceScale: { borderColor: "#E3E6EA" },
+        timeScale: {
+          borderColor: "#E3E6EA",
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      });
 
-    seriesRef.current = candlestickSeries;
+      chartRef.current = chart;
 
-    chart.subscribeCrosshairMove((param) => {
-      if (!param.point || !param.time) {
-        setTooltip(null);
-        return;
-      }
+      const candlestickSeries = chart.addSeries(CandlestickSeries, {
+        upColor: "#0D9488",
+        downColor: "#DC2626",
+        borderUpColor: "#0D9488",
+        borderDownColor: "#DC2626",
+        wickUpColor: "#0D9488",
+        wickDownColor: "#DC2626",
+      });
 
-      const candleData = param.seriesData.get(candlestickSeries) as CandlestickData;
-      if (candleData) {
-        const date = new Date((param.time as number) * 1000);
-        setTooltip({
-          time: date.toLocaleString(),
-          open: candleData.open.toFixed(5),
-          high: candleData.high.toFixed(5),
-          low: candleData.low.toFixed(5),
-          close: candleData.close.toFixed(5),
-          rsi: null,
-          macd: null,
-          bbPercent: null,
-          ema200: null,
-          atrRank: null,
-        });
-        setTooltipPosition({ x: param.point.x, y: param.point.y });
-      }
-    });
+      seriesRef.current = candlestickSeries;
 
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        const { clientWidth, clientHeight } = chartContainerRef.current;
-        if (clientWidth > 0 && clientHeight > 0) {
-          chartRef.current.applyOptions({ width: clientWidth, height: clientHeight });
+      chart.subscribeCrosshairMove((param) => {
+        if (!param.point || !param.time) {
+          setTooltip(null);
+          return;
         }
-      }
+
+        const candleData = param.seriesData.get(candlestickSeries) as CandlestickData;
+        if (candleData) {
+          const date = new Date((param.time as number) * 1000);
+          setTooltip({
+            time: date.toLocaleString(),
+            open: candleData.open.toFixed(5),
+            high: candleData.high.toFixed(5),
+            low: candleData.low.toFixed(5),
+            close: candleData.close.toFixed(5),
+            rsi: null,
+            macd: null,
+            bbPercent: null,
+            ema200: null,
+            atrRank: null,
+          });
+          setTooltipPosition({ x: param.point.x, y: param.point.y });
+        }
+      });
+
+      handleResize = () => {
+        if (chartRef.current) {
+          const { clientWidth: width, clientHeight: height } = container;
+          if (width > 0 && height > 0) {
+            chartRef.current.applyOptions({ width, height });
+          }
+        }
+      };
+
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(container);
+      window.addEventListener("resize", handleResize);
+      setTimeout(handleResize, 0);
+      return true;
     };
 
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(chartContainerRef.current);
-    window.addEventListener("resize", handleResize);
-    setTimeout(handleResize, 0);
+    if (!initializeChart()) {
+      deferredObserver = new ResizeObserver(() => {
+        if (initializeChart() && deferredObserver) {
+          deferredObserver.disconnect();
+          deferredObserver = null;
+        }
+      });
+      deferredObserver.observe(container);
+    }
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      resizeObserver.disconnect();
-      chart.remove();
+      if (handleResize) {
+        window.removeEventListener("resize", handleResize);
+      }
+      resizeObserver?.disconnect();
+      deferredObserver?.disconnect();
+      chartRef.current?.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
     };
   }, [symbol]);
 
@@ -166,10 +199,28 @@ export function CandlestickChart({ symbol, coordinatorSignal, report }: Candlest
 
     seriesRef.current.setData(chartData);
     chartRef.current?.timeScale().fitContent();
+    initialLoadComplete.current = true;
   }, [bars]);
 
+  useEffect(() => {
+    initialLoadComplete.current = false;
+  }, [symbol, activeTimeframe]);
+
+  useLiveCandles(symbol, activeTimeframe, {
+    onCandle: (bar) => {
+      if (initialLoadComplete.current) {
+        seriesRef.current?.update({ ...bar, time: bar.time as Time });
+      }
+    },
+    onTick: (tick) => {
+      setLiveTick(tick);
+      onTick?.(tick);
+    },
+    onStatus: setLiveStatus,
+  });
+
   return (
-    <div className="flex-1 bg-card rounded-md border border-border overflow-hidden flex flex-col h-full">
+    <div className="flex-1 bg-card rounded-md border border-border overflow-hidden flex flex-col h-full min-h-[260px]">
       {/* Overlay Strip */}
       <div className="h-10 bg-muted/50 border-b border-border flex items-center px-4 gap-6 shrink-0">
         {topPick && (
@@ -240,11 +291,28 @@ export function CandlestickChart({ symbol, coordinatorSignal, report }: Candlest
           {ohlcvLoading && (
             <span className="text-[10px] text-muted-foreground ml-2">Loading…</span>
           )}
+          {/* Live status + tick */}
+          <div className="flex items-center gap-3 ml-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "inline-block w-2 h-2 rounded-full",
+                  liveStatus === "connected" ? "bg-green-500" : liveStatus === "connecting" ? "bg-gray-400" : liveStatus === "reconnecting" ? "bg-yellow-400 animate-pulse" : "bg-red-500"
+                )}
+              />
+              <span className="text-[10px]">{liveStatus === "connected" ? "Live" : liveStatus === "connecting" ? "Connecting" : liveStatus === "reconnecting" ? "Reconnecting" : "Offline"}</span>
+            </div>
+            {liveTick && (
+              <div className="font-mono text-xs text-right">
+                {liveTick.bid.toFixed(5)} / {liveTick.ask.toFixed(5)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Chart Container */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden min-h-[200px]">
         <div ref={chartContainerRef} className="absolute inset-0 w-full h-full" />
 
         {/* Tooltip */}
