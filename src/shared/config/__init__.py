@@ -64,6 +64,26 @@ class Config:
     )
     STOCKTWITS_MODEL_DIR: Path = ROOT_DIR / "models" / "sentiment" / "stocktwits"
 
+    # Auth settings
+    AUTH_JWT_SECRET: str | None = os.getenv("AUTH_JWT_SECRET")
+    AUTH_JWT_ALGORITHM: str = os.getenv("AUTH_JWT_ALGORITHM", "HS256")
+    AUTH_ACCESS_TOKEN_MINUTES: int = int(os.getenv("AUTH_ACCESS_TOKEN_MINUTES", "1440"))
+    AUTH_REFRESH_TOKEN_DAYS: int = int(os.getenv("AUTH_REFRESH_TOKEN_DAYS", "365"))
+
+    # Google OAuth 2.0
+    GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
+    GOOGLE_REDIRECT_URI: str = os.getenv(
+        "GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback"
+    )
+
+    # SMTP / Email settings
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str | None = os.getenv("SMTP_USER")
+    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "FX-AlphaLab")
+
     @classmethod
     def validate(cls) -> None:
         """Validate required configuration."""

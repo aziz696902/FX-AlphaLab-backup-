@@ -18,12 +18,13 @@ from src.shared.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_PORT = os.environ.get("DB_PORT", "5432")
-DB_NAME = os.environ.get("DB_NAME", "fx_alphalab")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "postgres")
-_db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Pull DATABASE_URL from Config (reads .env automatically)
+from src.shared.config import Config  # noqa: E402
+
+_db_url = os.environ.get("DATABASE_URL") or (
+    f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASSWORD}"
+    f"@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
+)
 config.set_main_option("sqlalchemy.url", _db_url)
 
 
