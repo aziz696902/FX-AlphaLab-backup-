@@ -8,7 +8,7 @@ export default function Backtest() {
   ];
 
   return (
-    <section className="w-full bg-[#161D22] py-20 border-b border-[rgba(143,147,156,0.10)]">
+    <section className="w-full py-20 border-b border-[rgba(143,147,156,0.10)]">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <h2 className="text-[#B3902E] font-mono text-xs uppercase tracking-widest mb-3">Research Backtest</h2>

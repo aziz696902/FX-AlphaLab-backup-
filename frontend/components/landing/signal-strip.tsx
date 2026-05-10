@@ -51,7 +51,7 @@ const getSignalColor = (signal: string) => {
 
 export default function SignalStrip() {
   return (
-    <section className="w-full bg-[#111519] border-y border-[rgba(143,147,156,0.10)] py-12">
+    <section className="w-full border-y border-[rgba(143,147,156,0.10)] py-12">
       <div className="max-w-7xl mx-auto px-6">
         {/* Label */}
         <h2 className="text-[#B3902E] font-mono text-xs uppercase tracking-widest mb-8">
