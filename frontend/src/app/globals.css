@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-background text-ink-1 antialiased;
+  background-image:
+    radial-gradient(1200px 700px at 20% -10%, rgba(16, 185, 129, 0.08), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(251, 113, 133, 0.07), transparent 55%),
+    linear-gradient(120deg, rgba(16, 185, 129, 0.03), rgba(17, 24, 39, 0.12));
+}
+
+* {
+  scrollbar-color: #1f2937 #0b0d12;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #0b0d12;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 999px;
+}
+
+.grid-glow {
+  position: relative;
+}
+
+.grid-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.55), transparent 70%);
+  pointer-events: none;
+}
+
+.shimmer {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0.08) 8%, rgba(255, 255, 255, 0.2) 18%, rgba(255, 255, 255, 0.08) 33%);
+  background-size: 200% 100%;
+  animation: shimmer 2.2s linear infinite;
+}
