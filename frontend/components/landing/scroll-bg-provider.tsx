@@ -39,26 +39,26 @@ export default function ScrollBgProvider({ children }: { children: React.ReactNo
 
   return (
     <div ref={containerRef} className="relative w-full min-h-screen">
-      {/* Fixed background layer - current image */}
+      {/* Base image layer */}
       <div
-        className="fixed inset-0 z-[-2] w-full h-screen"
+        className="fixed inset-0 w-full h-screen"
         style={{
+          zIndex: 0,
           backgroundImage: `url('${currentBg}')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
         }}
       />
 
-      {/* Fixed background layer - next image with opacity for fade effect */}
+      {/* Next image fading in on scroll */}
       {nextBg && (
         <div
-          className="fixed inset-0 z-[-1] w-full h-screen"
+          className="fixed inset-0 w-full h-screen"
           style={{
+            zIndex: 1,
             backgroundImage: `url('${nextBg}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundAttachment: 'fixed',
             opacity: bgOpacity,
           }}
         />
@@ -66,8 +66,9 @@ export default function ScrollBgProvider({ children }: { children: React.ReactNo
 
       {/* Dark overlay for readability */}
       <div
-        className="fixed inset-0 z-[-1] w-full h-screen"
+        className="fixed inset-0 w-full h-screen"
         style={{
+          zIndex: 2,
           background: `linear-gradient(
             180deg,
             rgba(14, 20, 26, 0.7) 0%,
@@ -77,8 +78,8 @@ export default function ScrollBgProvider({ children }: { children: React.ReactNo
         }}
       />
 
-      {/* Content */}
-      <div className="relative z-0 bg-black/30">
+      {/* Content above all background layers */}
+      <div className="relative" style={{ zIndex: 3 }}>
         {children}
       </div>
     </div>
