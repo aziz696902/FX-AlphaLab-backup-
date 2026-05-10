@@ -1,7 +1,7 @@
 """add_jsonb_columns_to_agent_signals
 
 Revision ID: 3dee0b24c9f5
-Revises: 0001
+Revises: 0003
 Create Date: 2026-05-05 04:15:50.685537
 
 """
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "3dee0b24c9f5"
-down_revision: str | Sequence[str] | None = "0001"
+down_revision: str | Sequence[str] | None = "0003"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
