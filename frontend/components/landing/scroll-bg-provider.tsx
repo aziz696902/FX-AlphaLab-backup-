@@ -10,7 +10,7 @@ export function BgZone({ bg, children }: ZoneProps) {
     <div
       style={{
         backgroundImage: `url('${bg}')`,
-        backgroundAttachment: 'fixed',
+
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         position: 'relative',
