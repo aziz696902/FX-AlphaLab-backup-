@@ -2,237 +2,133 @@
 
 import { useState } from 'react';
 
-interface TierDetails {
-  [key: string]: {
-    label: string;
-    description: string;
-    badge: string;
-    details: string[];
-  };
+interface Tier {
+  key: string;
+  label: string;
+  color: string;
+  badge: string;
+  description: string;
+  details: string[];
 }
 
-const tiers: TierDetails = {
-  sources: {
+const tiers: Tier[] = [
+  {
+    key: 'sources',
     label: 'Data Sources',
-    description: 'Raw external data feeds',
+    color: '#8F939C',
     badge: 'Real-time',
-    details: ['MT5/Dukascopy', 'FRED', 'ECB/Fed/BoE', 'ForexFactory', 'GDELT', 'Reddit/Stocktwits', 'Google Trends'],
+    description: 'Raw external data feeds',
+    details: ['MT5 / Dukascopy', 'FRED', 'ECB · Fed · BoE', 'ForexFactory', 'GDELT', 'Reddit · StockTwits', 'Google Trends'],
   },
-  bronze: {
-    label: 'Bronze Layer',
-    description: 'Raw immutable data collection',
-    badge: 'Append-only · Parquet · TimescaleDB',
-    details: [
-      'Historical tick data archived',
-      'OHLCV bars timestamped',
-      'Economic releases unmodified',
-      'Social media streams as-is',
-      'Geopolitical event logs raw',
-    ],
+  {
+    key: 'bronze',
+    label: 'Bronze',
+    color: '#B3902E',
+    badge: 'Append-only · Parquet',
+    description: 'Immutable raw collection',
+    details: ['Historical tick data archived', 'OHLCV bars timestamped', 'Economic releases as-is', 'Social streams raw', 'Geopolitical event logs'],
   },
-  silver: {
-    label: 'Silver Layer',
-    description: 'Cleaned, normalized, validated data',
-    badge: 'Pandera validated · Feature-ready',
-    details: [
-      'Outliers detected and flagged',
-      'Missing values imputed',
-      'Timezone normalization',
-      'Feature engineering applied',
-      'Schema validation enforced',
-    ],
+  {
+    key: 'silver',
+    label: 'Silver',
+    color: '#9AA5B4',
+    badge: 'Pandera validated',
+    description: 'Cleaned & normalised',
+    details: ['Outliers detected & flagged', 'Missing values imputed', 'Timezone normalisation', 'Feature engineering', 'Schema validation'],
   },
-  gold: {
-    label: 'Gold Layer',
-    description: 'Alpha outputs ready for research',
-    badge: 'Signals · Reports · Scores',
-    details: [
-      'Agent signals computed',
-      'Confidence scores calculated',
-      'Analysis reports generated',
-      'Explainability provided',
-      'Quality metrics tracked',
-    ],
+  {
+    key: 'gold',
+    label: 'Gold',
+    color: '#D4AF5A',
+    badge: 'Signals · Scores',
+    description: 'Alpha-grade outputs',
+    details: ['Agent signals computed', 'Confidence scores', 'Analysis reports', 'Explainability traces', 'Quality metrics'],
   },
-};
+];
+
+const outputs = [
+  { label: 'Agents', description: 'Technical · Macro · Sentiment · Geo' },
+  { label: 'Coordinator', description: 'Signal fusion & ranking' },
+  { label: 'Report', description: 'LLM-generated research output' },
+];
 
 export default function Architecture() {
-  const [expandedTier, setExpandedTier] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const toggle = (key: string) => setExpanded(expanded === key ? null : key);
 
   return (
     <section id="architecture" className="w-full py-20 border-b border-[rgba(143,147,156,0.10)]">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
         <h2 className="text-[#B3902E] font-mono text-xs uppercase tracking-widest mb-3">
           Medallion Data Architecture
         </h2>
-        <p className="text-[#8F939C] text-sm mb-12 max-w-2xl">
-          A three-tier immutable data pipeline from raw collection to alpha-grade outputs.
+        <p className="text-[#8F939C] text-sm mb-10 max-w-2xl">
+          Three-tier immutable data pipeline from raw collection to alpha-grade outputs.
         </p>
 
-        {/* Pipeline flow */}
-        <div className="overflow-x-auto pb-4 mb-12">
-          <div className="flex items-center gap-0 min-w-max">
-            {/* Sources */}
-            <div className="w-48">
-              <div
-                className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] cursor-pointer hover:border-[#294F69] transition-all"
-                onClick={() => setExpandedTier(expandedTier === 'sources' ? null : 'sources')}
+        {/* Tier cards — fluid, no horizontal scroll */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {tiers.map((tier, idx) => (
+            <div key={tier.key}>
+              <button
+                onClick={() => toggle(tier.key)}
+                className="w-full text-left p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] hover:bg-[rgba(255,255,255,0.03)] transition-all"
+                style={{ borderLeft: `3px solid ${tier.color}` }}
               >
-                <p className="text-[#8F939C] text-xs font-mono uppercase mb-2">Data Sources</p>
-                <p className="text-[#E8ECF0] text-xs leading-relaxed mb-2">{tiers.sources.description}</p>
-                <p className="text-[#8F939C] text-[10px] font-mono">{tiers.sources.badge}</p>
-              </div>
-              {expandedTier === 'sources' && (
-                <div className="mt-2 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
-                  {tiers.sources.details.map((detail, idx) => (
-                    <p key={idx} className="text-[#BBC0CB] text-xs mb-1">
-                      • {detail}
-                    </p>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-xs uppercase" style={{ color: tier.color }}>
+                    {tier.label}
+                  </span>
+                  <span className="text-[#8F939C] text-xs">{expanded === tier.key ? '−' : '+'}</span>
+                </div>
+                <p className="text-[#E8ECF0] text-xs mb-2 leading-snug">{tier.description}</p>
+                <p className="text-[#8F939C] text-[10px] font-mono">{tier.badge}</p>
+              </button>
+
+              {expanded === tier.key && (
+                <div className="mt-1 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
+                  {tier.details.map((d, i) => (
+                    <p key={i} className="text-[#BBC0CB] text-xs mb-1 last:mb-0">· {d}</p>
                   ))}
                 </div>
               )}
-            </div>
 
-            {/* Arrow */}
-            <div className="px-4 flex-shrink-0">
-              <svg width="24" height="2" viewBox="0 0 24 2" fill="none">
-                <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(143,147,156,0.4)" strokeWidth="1" strokeDasharray="4" />
-              </svg>
-            </div>
-
-            {/* Bronze */}
-            <div className="w-48">
-              <div
-                className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] cursor-pointer hover:border-[#B3902E] transition-all"
-                style={{ borderLeft: '3px solid #B3902E' }}
-                onClick={() => setExpandedTier(expandedTier === 'bronze' ? null : 'bronze')}
-              >
-                <p className="text-[#B3902E] text-xs font-mono uppercase mb-2">Bronze</p>
-                <p className="text-[#E8ECF0] text-xs leading-relaxed mb-2">{tiers.bronze.description}</p>
-                <p className="text-[#8F939C] text-[10px] font-mono">{tiers.bronze.badge}</p>
-              </div>
-              {expandedTier === 'bronze' && (
-                <div className="mt-2 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
-                  {tiers.bronze.details.map((detail, idx) => (
-                    <p key={idx} className="text-[#BBC0CB] text-xs mb-1">
-                      • {detail}
-                    </p>
-                  ))}
-                </div>
+              {/* Flow arrow between tiers (desktop only) */}
+              {idx < tiers.length - 1 && (
+                <div className="hidden md:block absolute" />
               )}
             </div>
-
-            {/* Arrow */}
-            <div className="px-4 flex-shrink-0">
-              <svg width="24" height="2" viewBox="0 0 24 2" fill="none">
-                <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(143,147,156,0.4)" strokeWidth="1" strokeDasharray="4" />
-              </svg>
-            </div>
-
-            {/* Silver */}
-            <div className="w-48">
-              <div
-                className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] cursor-pointer hover:border-[#8F939C] transition-all"
-                style={{ borderLeft: '3px solid #8F939C' }}
-                onClick={() => setExpandedTier(expandedTier === 'silver' ? null : 'silver')}
-              >
-                <p className="text-[#8F939C] text-xs font-mono uppercase mb-2">Silver</p>
-                <p className="text-[#E8ECF0] text-xs leading-relaxed mb-2">{tiers.silver.description}</p>
-                <p className="text-[#8F939C] text-[10px] font-mono">{tiers.silver.badge}</p>
-              </div>
-              {expandedTier === 'silver' && (
-                <div className="mt-2 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
-                  {tiers.silver.details.map((detail, idx) => (
-                    <p key={idx} className="text-[#BBC0CB] text-xs mb-1">
-                      • {detail}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Arrow */}
-            <div className="px-4 flex-shrink-0">
-              <svg width="24" height="2" viewBox="0 0 24 2" fill="none">
-                <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(143,147,156,0.4)" strokeWidth="1" strokeDasharray="4" />
-              </svg>
-            </div>
-
-            {/* Gold */}
-            <div className="w-48">
-              <div
-                className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] cursor-pointer hover:border-[#B3902E] transition-all"
-                style={{ borderLeft: '3px solid #B3902E' }}
-                onClick={() => setExpandedTier(expandedTier === 'gold' ? null : 'gold')}
-              >
-                <p className="text-[#B3902E] text-xs font-mono uppercase mb-2">Gold</p>
-                <p className="text-[#E8ECF0] text-xs leading-relaxed mb-2">{tiers.gold.description}</p>
-                <p className="text-[#8F939C] text-[10px] font-mono">{tiers.gold.badge}</p>
-              </div>
-              {expandedTier === 'gold' && (
-                <div className="mt-2 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
-                  {tiers.gold.details.map((detail, idx) => (
-                    <p key={idx} className="text-[#BBC0CB] text-xs mb-1">
-                      • {detail}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Arrow */}
-            <div className="px-4 flex-shrink-0">
-              <svg width="24" height="2" viewBox="0 0 24 2" fill="none">
-                <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(143,147,156,0.4)" strokeWidth="1" strokeDasharray="4" />
-              </svg>
-            </div>
-
-            {/* Agents */}
-            <div className="w-40">
-              <div className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519]">
-                <p className="text-[#8F939C] text-xs font-mono uppercase mb-2">Agents</p>
-                <p className="text-[#E8ECF0] text-xs">Analysis & inference</p>
-              </div>
-            </div>
-
-            {/* Arrow */}
-            <div className="px-4 flex-shrink-0">
-              <svg width="24" height="2" viewBox="0 0 24 2" fill="none">
-                <line x1="0" y1="1" x2="24" y2="1" stroke="rgba(143,147,156,0.4)" strokeWidth="1" strokeDasharray="4" />
-              </svg>
-            </div>
-
-            {/* Report */}
-            <div className="w-40">
-              <div className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519]">
-                <p className="text-[#B3902E] text-xs font-mono uppercase mb-2">Report</p>
-                <p className="text-[#E8ECF0] text-xs">Research output</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Timeline for mobile */}
-        <div className="hidden gap-8 flex-col lg:hidden">
-          {['sources', 'bronze', 'silver', 'gold'].map((tier) => (
-            <div key={tier}>
-              <div
-                className="p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] cursor-pointer"
-                onClick={() => setExpandedTier(expandedTier === tier ? null : tier)}
-              >
-                <p className="text-[#B3902E] text-xs font-mono uppercase mb-2">
-                  {tiers[tier as keyof typeof tiers].label}
-                </p>
-                <p className="text-[#E8ECF0] text-xs mb-2">{tiers[tier as keyof typeof tiers].description}</p>
+        {/* Flow indicator */}
+        <div className="flex items-center gap-2 mb-10 px-1">
+          {tiers.map((tier, idx) => (
+            <div key={tier.key} className="flex items-center gap-2 flex-1">
+              <div className="h-px flex-1" style={{ background: `linear-gradient(to right, ${tier.color}66, ${tier.color})` }} />
+              {idx < tiers.length - 1 && (
+                <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
+                  <path d="M1 1l4 4-4 4" stroke="rgba(143,147,156,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Output layer */}
+        <div className="grid grid-cols-3 gap-3">
+          {outputs.map((out, idx) => (
+            <div key={out.label} className="flex items-stretch gap-3">
+              <div className="flex-1 p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#0E1418]">
+                <p className="text-[#B3902E] text-xs font-mono uppercase mb-1">{out.label}</p>
+                <p className="text-[#8F939C] text-xs">{out.description}</p>
               </div>
-              {expandedTier === tier && (
-                <div className="mt-2 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
-                  {tiers[tier as keyof typeof tiers].details.map((detail, idx) => (
-                    <p key={idx} className="text-[#BBC0CB] text-xs mb-1">
-                      • {detail}
-                    </p>
-                  ))}
+              {idx < outputs.length - 1 && (
+                <div className="flex items-center self-center">
+                  <svg width="6" height="10" viewBox="0 0 6 10" fill="none">
+                    <path d="M1 1l4 4-4 4" stroke="rgba(143,147,156,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               )}
             </div>

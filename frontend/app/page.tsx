@@ -6,7 +6,6 @@ import Architecture from "@/components/landing/architecture";
 import PipelineHealth from "@/components/landing/pipeline-health";
 import ReportPreview from "@/components/landing/report-preview";
 import Backtest from "@/components/landing/backtest";
-import Roadmap from "@/components/landing/roadmap";
 import Footer from "@/components/landing/footer";
 import { BgZone } from "@/components/landing/scroll-bg-provider";
 
@@ -38,7 +37,6 @@ export default function LandingPage() {
         <PipelineHealth />
         <ReportPreview />
         <Backtest />
-        <Roadmap />
         <Footer />
       </BgZone>
     </div>
