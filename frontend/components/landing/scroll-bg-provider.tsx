@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 
 export default function ScrollBgProvider({ children }: { children: React.ReactNode }) {
-  const [currentBg, setCurrentBg] = useState('/hero-bg.jpg');
-  const [nextBg, setNextBg] = useState('/bg-scroll-1.jpg');
+  const [currentBg, setCurrentBg] = useState('/hero-bg.png');
+  const [nextBg, setNextBg] = useState('/bg-scroll-1.png');
   const [bgOpacity, setBgOpacity] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -17,17 +17,17 @@ export default function ScrollBgProvider({ children }: { children: React.ReactNo
       // Determine which backgrounds to show based on scroll progress
       if (scrollPercent < 0.33) {
         // First third: transition from hero-bg to bg-scroll-1
-        setCurrentBg('/hero-bg.jpg');
-        setNextBg('/bg-scroll-1.jpg');
+        setCurrentBg('/hero-bg.png');
+        setNextBg('/bg-scroll-1.png');
         setBgOpacity(scrollPercent / 0.33);
       } else if (scrollPercent < 0.66) {
         // Second third: transition from bg-scroll-1 to bg-scroll-2
-        setCurrentBg('/bg-scroll-1.jpg');
-        setNextBg('/bg-scroll-2.jpg');
+        setCurrentBg('/bg-scroll-1.png');
+        setNextBg('/bg-scroll-2.png');
         setBgOpacity((scrollPercent - 0.33) / 0.33);
       } else {
         // Last third: stay on bg-scroll-2
-        setCurrentBg('/bg-scroll-2.jpg');
+        setCurrentBg('/bg-scroll-2.png');
         setNextBg('');
         setBgOpacity(1);
       }
