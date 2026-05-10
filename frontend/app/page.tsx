@@ -8,25 +8,39 @@ import ReportPreview from "@/components/landing/report-preview";
 import Backtest from "@/components/landing/backtest";
 import Roadmap from "@/components/landing/roadmap";
 import Footer from "@/components/landing/footer";
-import ScrollBgProvider from "@/components/landing/scroll-bg-provider";
+import { BgZone } from "@/components/landing/scroll-bg-provider";
 
 export default function LandingPage() {
   return (
-    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
-    <ScrollBgProvider>
-      <main className="w-full overflow-x-hidden">
-        <Navigation />
+    <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", background: '#000' }}>
+      <Navigation />
+
+      {/* Zone 1 — hero background pinned */}
+      <BgZone bg="/hero-bg.png">
         <Hero />
+      </BgZone>
+
+      {/* Black gap */}
+      <div style={{ height: 180, background: '#000' }} />
+
+      {/* Zone 2 — second background pinned */}
+      <BgZone bg="/bg-scroll-1.png">
         <SignalStrip />
         <AgentCouncil />
         <Architecture />
+      </BgZone>
+
+      {/* Black gap */}
+      <div style={{ height: 180, background: '#000' }} />
+
+      {/* Zone 3 — third background pinned */}
+      <BgZone bg="/bg-scroll-2.png">
         <PipelineHealth />
         <ReportPreview />
         <Backtest />
         <Roadmap />
         <Footer />
-      </main>
-    </ScrollBgProvider>
+      </BgZone>
     </div>
   );
 }
