@@ -18,10 +18,12 @@ from src.shared.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
-# Pull DATABASE_URL from environment so alembic.ini doesn't embed credentials
-_db_url = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/fx_alphalab",
+# Pull DATABASE_URL from Config (reads .env automatically)
+from src.shared.config import Config  # noqa: E402
+
+_db_url = os.environ.get("DATABASE_URL") or (
+    f"postgresql+psycopg2://{Config.DB_USER}:{Config.DB_PASSWORD}"
+    f"@{Config.DB_HOST}:{Config.DB_PORT}/{Config.DB_NAME}"
 )
 config.set_main_option("sqlalchemy.url", _db_url)
 

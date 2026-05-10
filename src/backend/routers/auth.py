@@ -97,7 +97,11 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenRespon
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     email = _normalize_email(payload.email)
     user = db.execute(select(UserAccount).where(UserAccount.email == email)).scalar_one_or_none()
-    if user is None or not verify_password(payload.password, user.password_hash):
+    if (
+        user is None
+        or not user.password_hash
+        or not verify_password(payload.password, user.password_hash)
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User disabled")
@@ -134,7 +138,7 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResp
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authorized")
 
-    record.revoked_at = now
+    record.revoked_at = now  # naive UTC — matches DB TIMESTAMP column
     record.last_used_at = now
 
     return _issue_tokens(db, user)

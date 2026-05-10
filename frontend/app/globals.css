@@ -143,3 +143,25 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+@keyframes auth-chart-pan {
+  0% {
+    background-position: 0% 50%;
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  50% {
+    background-position: 10% 40%;
+    transform: translate3d(-10px, 8px, 0) scale(1.08);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+}
+
+.auth-chart-animate {
+  animation: auth-chart-pan 18s ease-in-out infinite;
+  background-size: 120% 120%;
+  transform-origin: center;
+  will-change: background-position, transform;
+}

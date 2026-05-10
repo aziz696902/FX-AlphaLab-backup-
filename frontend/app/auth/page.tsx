@@ -1,23 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Lock, ChartLine, Sparkles } from "lucide-react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 interface TokenResponse {
   access_token: string;
@@ -41,14 +31,31 @@ function storeTokens(data: TokenResponse) {
   localStorage.setItem("user", JSON.stringify(data.user));
 }
 
+const API_BASE_BACKEND = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+  google_denied: "Google sign-in was cancelled.",
+  google_token_failed: "Could not connect to Google. Please try again.",
+  google_userinfo_failed: "Could not retrieve your Google profile.",
+  google_no_email: "Your Google account has no verified email.",
+  missing_tokens: "Authentication failed. Please try again.",
+};
+
 export default function AuthPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [oauthError, setOauthError] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const err = new URLSearchParams(window.location.search).get("error");
+    return err ? (GOOGLE_ERROR_MESSAGES[err] ?? "Google sign-in failed.") : null;
+  });
 
   // ── Login state ────────────────────────────────────────────────────────────
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // ── Signup state ───────────────────────────────────────────────────────────
   const [signupName, setSignupName] = useState("");
@@ -59,12 +66,22 @@ export default function AuthPage() {
   const [signupError, setSignupError] = useState<string | null>(null);
   const [signupAgreed, setSignupAgreed] = useState(false);
 
+  function switchToSignup() {
+    setLoginError(null);
+    setMode("signup");
+  }
+
+  function switchToLogin() {
+    setSignupError(null);
+    setMode("login");
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginError(null);
     setLoginLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetch(`${API_BASE_BACKEND}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
@@ -92,7 +109,7 @@ export default function AuthPage() {
     }
     setSignupLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/signup`, {
+      const res = await fetch(`${API_BASE_BACKEND}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,7 +121,6 @@ export default function AuthPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        // Pydantic validation errors come as { detail: [...] }
         if (Array.isArray(data.detail)) {
           setSignupError(data.detail.map((d: { msg: string }) => d.msg).join("; "));
         } else {
@@ -122,267 +138,276 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="relative h-screen overflow-hidden bg-background text-foreground">
+    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 left-1/2 h-80 w-[520px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute right-24 top-24 h-52 w-52 rounded-full bg-[var(--buy)]/12 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-[var(--buy)]/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(31,74,168,0.05)_1px,transparent_1px),linear-gradient(180deg,rgba(31,74,168,0.05)_1px,transparent_1px)] bg-[size:36px_36px] opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(31,74,168,0.12),transparent_55%),radial-gradient(circle_at_bottom,rgba(13,148,136,0.1),transparent_45%)]" />
+        <div className="auth-chart-animate absolute inset-0 bg-[url('/auth/dark-bg.png')] bg-cover bg-left opacity-100 dark:block hidden" />
+        <div className="auth-chart-animate absolute inset-0 bg-[url('/auth/light-bg.png')] bg-cover bg-left opacity-100 dark:hidden block" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(15,23,42,0.05),transparent_50%)] dark:bg-[radial-gradient(circle_at_left,rgba(15,23,42,0.5),transparent_55%)]" />
+        <div className="absolute inset-0 bg-gradient-to-l from-background/95 via-background/80 to-transparent dark:from-[#070b10]/90 dark:via-[#0b1118]/70" />
       </div>
 
-      <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col px-6 py-5">
-        {/* Header */}
-        <header className="flex shrink-0 items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">FX</span>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">AlphaLab</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Intelligent FX Platform</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-[10px] uppercase tracking-widest text-muted-foreground shadow-[var(--card-shadow)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--profit)]" />
-              System online
-            </div>
-            <Badge className="h-6 bg-[var(--long)] text-[10px] text-white">LIVE</Badge>
-          </div>
-        </header>
-
-        {/* Body */}
-        <div className="mt-5 grid flex-1 gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          {/* Left — value proposition */}
-          <section className="space-y-4">
-            <div className="space-y-2">
-              <Badge variant="secondary" className="h-6 bg-secondary text-[10px] uppercase tracking-widest">
-                Institutional-grade FX intelligence
-              </Badge>
-              <h1 className="text-3xl font-semibold leading-tight md:text-4xl">
-                Precision insights, calibrated for every opportunity.
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Access the multi-agent workspace, unified order desk, and real-time signal telemetry — all in one platform.
-              </p>
-            </div>
-
-            {/* Market Pulse */}
-            <div className="rounded-xl border border-border bg-card/80 p-4 shadow-[var(--card-shadow)]">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Market Pulse</p>
-                  <p className="mt-0.5 text-sm font-semibold">EURUSD momentum building</p>
-                </div>
-                <Badge className="bg-primary/10 text-primary text-[10px]">Updated 2m</Badge>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-lg border border-border bg-background/60 p-2.5">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Momentum</p>
-                  <p className="mt-0.5 text-base font-semibold text-primary">Strong</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background/60 p-2.5">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Regime</p>
-                  <p className="mt-0.5 text-base font-semibold text-[var(--profit)]">Trending</p>
-                </div>
-                <div className="rounded-lg border border-border bg-background/60 p-2.5">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Agents</p>
-                  <p className="mt-0.5 text-base font-semibold">4 aligned</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature cards */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-card/80 p-3 shadow-[var(--card-shadow)]">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Shield className="h-3.5 w-3.5 text-primary" />
-                  Security
-                </div>
-                <p className="mt-1.5 text-xs">Enterprise-grade protection with seamless device trust and session continuity.</p>
-                <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--profit)]">SOC 2 ready</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card/80 p-3 shadow-[var(--card-shadow)]">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <ChartLine className="h-3.5 w-3.5 text-primary" />
-                  Performance
-                </div>
-                <p className="mt-1.5 text-xs">99.98% uptime with sub-80ms signal routing and live data streaming.</p>
-                <p className="mt-2 font-mono text-[10px] text-[var(--profit)]">Latency: 74ms</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card/80 p-3 shadow-[var(--card-shadow)]">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5 text-primary" />
-                  Privacy
-                </div>
-                <p className="mt-1.5 text-xs">End-to-end encryption with zero data sharing and full ownership of your signals.</p>
-                <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--profit)]">Fully encrypted</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card/80 p-3 shadow-[var(--card-shadow)]">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Alpha Signals
-                </div>
-                <p className="mt-1.5 text-xs">Macro, geo, sentiment and technical agents converging into one clear decision.</p>
-                <p className="mt-2 font-mono text-[10px] text-primary">4 agents · always on</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Right — auth card */}
-          <section>
-            <Card className="relative overflow-hidden border-border bg-card/90 shadow-[var(--card-shadow)] backdrop-blur">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-[var(--buy)]/70 to-transparent" />
-              <CardHeader className="space-y-1 pb-3">
-                <CardTitle className="text-lg">Welcome to AlphaLab</CardTitle>
-                <CardDescription>
-                  Sign in or create your account to start trading smarter today.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-3">
-                <Tabs defaultValue="login" className="w-full">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="login" className="text-xs">Sign in</TabsTrigger>
-                    <TabsTrigger value="signup" className="text-xs">Create account</TabsTrigger>
-                  </TabsList>
-
-                  {/* ── Login tab ── */}
-                  <TabsContent value="login" className="mt-3">
-                    <form onSubmit={handleLogin} className="space-y-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="login-email">
-                          Email
-                        </label>
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder="trader@alphalab.io"
-                          value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
-                          required
-                          autoComplete="email"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="login-password">
-                          Password
-                        </label>
-                        <Input
-                          id="login-password"
-                          type="password"
-                          placeholder="••••••••"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          required
-                          autoComplete="current-password"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <label className="flex items-center gap-2 text-muted-foreground">
-                          <Checkbox />
-                          Remember this device
-                        </label>
-                        <button type="button" className="text-primary hover:underline">Forgot password?</button>
-                      </div>
-
-                      {loginError && (
-                        <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                          {loginError}
-                        </p>
-                      )}
-
-                      <Button type="submit" className="w-full" disabled={loginLoading}>
-                        {loginLoading ? "Signing in…" : "Access Dashboard"}
-                      </Button>
-                    </form>
-                  </TabsContent>
-
-                  {/* ── Signup tab ── */}
-                  <TabsContent value="signup" className="mt-3">
-                    <form onSubmit={handleSignup} className="space-y-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="signup-name">
-                          Full name
-                        </label>
-                        <Input
-                          id="signup-name"
-                          placeholder="Alex Morgan"
-                          value={signupName}
-                          onChange={(e) => setSignupName(e.target.value)}
-                          autoComplete="name"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="signup-email">
-                          Work email
-                        </label>
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="alex@fund.io"
-                          value={signupEmail}
-                          onChange={(e) => setSignupEmail(e.target.value)}
-                          required
-                          autoComplete="email"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="signup-password">
-                          Password
-                        </label>
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          placeholder="Minimum 12 characters"
-                          value={signupPassword}
-                          onChange={(e) => setSignupPassword(e.target.value)}
-                          required
-                          autoComplete="new-password"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground" htmlFor="signup-role">
-                          Role
-                        </label>
-                        <Input
-                          id="signup-role"
-                          placeholder="e.g. Portfolio Manager"
-                          value={signupRole}
-                          onChange={(e) => setSignupRole(e.target.value)}
-                        />
-                      </div>
-                      <label className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <Checkbox
-                          className="mt-0.5"
-                          checked={signupAgreed}
-                          onCheckedChange={(v) => setSignupAgreed(v === true)}
-                        />
-                        I agree to the FX-AlphaLab terms of service and platform usage policy.
-                      </label>
-
-                      {signupError && (
-                        <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                          {signupError}
-                        </p>
-                      )}
-
-                      <Button type="submit" className="w-full" disabled={signupLoading}>
-                        {signupLoading ? "Creating account…" : "Get Started"}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-              <CardFooter className="border-t border-border pt-3">
-                <div className="flex w-full items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Need a guided walkthrough?</span>
-                  <button className="text-primary hover:underline">Contact our team</button>
-                </div>
-              </CardFooter>
-            </Card>
-          </section>
+      <div className="relative flex min-h-screen items-center justify-end px-6 py-10 sm:px-10">
+        <div className="absolute left-6 top-6 sm:left-10 sm:top-8">
+          <Image
+            src="/auth/fx-alphalab-logo.png"
+            alt="FX-AlphaLab"
+            width={170}
+            height={40}
+            className="h-auto w-[140px] sm:w-[170px]"
+            priority
+          />
         </div>
+
+        <Card className="w-full max-w-[420px] -translate-x-7 border-white/20 bg-white/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur dark:border-white/10 dark:bg-[#0b1219]/85 dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+          <CardHeader className="items-center gap-3 pb-4 text-center">
+            <Image
+              src="/auth/fx-mark1.png"
+              alt="FX mark"
+              width={64}
+              height={40}
+              className="h-auto w-[72px]"
+              priority
+            />
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-bold tracking-wide text-[#D2B166]">
+                {mode === "login" ? "FX-AlphaLab" : "Create your account"}
+              </CardTitle>
+              <CardDescription className="text-sm text-muted-foreground/90 dark:text-white/80">
+                {mode === "login"
+                  ? "Sign in to your market intelligence workspace"
+                  : "Get started with FX-AlphaLab in seconds"}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {mode === "login" ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="login-email"
+                  >
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className="h-11 rounded-lg bg-white/70 pl-10 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="login-password"
+                  >
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="login-password"
+                      type={showLoginPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      className="h-11 rounded-lg bg-white/70 pl-10 pr-11 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Toggle password visibility"
+                      onClick={() => setShowLoginPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end text-sm text-muted-foreground">
+                  <button type="button" className="text-primary hover:underline">
+                    Forgot password?
+                  </button>
+                </div>
+
+                {loginError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {loginError}
+                  </p>
+                )}
+
+                <Button type="submit" className="h-11 w-full gap-2 text-base font-semibold" disabled={loginLoading}>
+                  {loginLoading ? "Signing in…" : "Sign in"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
+                  <span className="h-px w-full bg-border" />
+                  OR
+                  <span className="h-px w-full bg-border" />
+                </div>
+
+                {oauthError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {oauthError}
+                  </p>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { window.location.href = `${API_BASE_BACKEND}/auth/google`; }}
+                  className="h-11 w-full gap-2 rounded-lg border-border bg-white/80 text-foreground dark:bg-[#0c141c]/70 dark:text-white"
+                >
+                  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                    <path
+                      fill="#FFC107"
+                      d="M43.6 20.1H42V20H24v8h11.3C33.8 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.2l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"
+                    />
+                    <path
+                      fill="#FF3D00"
+                      d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.2l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"
+                    />
+                    <path
+                      fill="#4CAF50"
+                      d="M24 44c5.3 0 10.1-2 13.7-5.3l-6.3-5.3C29.4 35.5 26.8 36 24 36c-5.4 0-9.8-3.3-11.3-8l-6.6 5.1C9.5 39.4 16.3 44 24 44z"
+                    />
+                    <path
+                      fill="#1976D2"
+                      d="M43.6 20.1H42V20H24v8h11.3c-1.1 3-3.3 5.3-6.3 6.8l6.3 5.3C38.9 36.7 44 31.1 44 24c0-1.3-.1-2.6-.4-3.9z"
+                    />
+                  </svg>
+                  Continue with Google
+                </Button>
+
+                <p className="text-center text-sm text-muted-foreground/90">
+                  New here?{" "}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={switchToSignup}
+                  >
+                    Create an account
+                  </button>
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="signup-name"
+                  >
+                    Full name
+                  </label>
+                  <Input
+                    id="signup-name"
+                    placeholder="Alex Morgan"
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    autoComplete="name"
+                    className="h-11 rounded-lg bg-white/70 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="signup-email"
+                  >
+                    Work email
+                  </label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="alex@fund.com"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                    className="h-11 rounded-lg bg-white/70 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="signup-password"
+                  >
+                    Password
+                  </label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="Create a secure password"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                    className="h-11 rounded-lg bg-white/70 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
+                    htmlFor="signup-role"
+                  >
+                    Role (optional)
+                  </label>
+                  <Input
+                    id="signup-role"
+                    placeholder="Portfolio manager"
+                    value={signupRole}
+                    onChange={(e) => setSignupRole(e.target.value)}
+                    className="h-11 rounded-lg bg-white/70 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
+                  />
+                </div>
+
+                <div className="flex items-start gap-2 text-xs text-muted-foreground/90 dark:text-white/80">
+                  <Checkbox
+                    checked={signupAgreed}
+                    onCheckedChange={(checked) => setSignupAgreed(!!checked)}
+                  />
+                  <span>
+                    I agree to the compliance policy and understand that AlphaLab is for professional use only.
+                  </span>
+                </div>
+
+                {signupError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {signupError}
+                  </p>
+                )}
+
+                <Button type="submit" className="h-11 w-full font-semibold" disabled={signupLoading}>
+                  {signupLoading ? "Creating account…" : "Create account"}
+                </Button>
+
+                <p className="text-center text-sm text-muted-foreground/90">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={switchToLogin}
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

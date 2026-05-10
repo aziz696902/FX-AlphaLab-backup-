@@ -67,7 +67,7 @@ def create_refresh_token(user: UserAccount) -> tuple[str, str, datetime]:
     }
     expires = timedelta(days=Config.AUTH_REFRESH_TOKEN_DAYS)
     token, _ = _encode_token(payload, expires)
-    expires_at = datetime.utcnow() + expires
+    expires_at = datetime.now(timezone.utc) + expires
     return token, jti, expires_at
 
 
