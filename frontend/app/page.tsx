@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/trading/top-bar";
 import { LeftSidebar } from "@/components/trading/left-sidebar";
 import { CandlestickChart } from "@/components/trading/candlestick-chart";
@@ -11,11 +12,24 @@ import { useResizableLayout } from "@/hooks/use-resizable-layout";
 import { useInferenceData } from "@/hooks/use-inference-data";
 
 export default function TradingDashboard() {
+  const router = useRouter();
+  const [authed, setAuthed] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("access_token")) {
+      router.replace("/auth");
+    } else {
+      setAuthed(true);
+    }
+  }, [router]);
+
   const [activeInstrument, setActiveInstrument] = useState("EURUSD");
   const [liveTick, setLiveTick] = useState<import("@/lib/api").LiveTick | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { sizes, handleMouseDown, resetLayout } = useResizableLayout();
   const inference = useInferenceData();
+
+  if (!authed) return null;
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
