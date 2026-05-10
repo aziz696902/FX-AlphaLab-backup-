@@ -535,7 +535,7 @@ class MT5Connection:
                     price_current=pos.price_current,
                     swap=pos.swap,
                     profit=pos.profit,
-                    commission=pos.commission,
+                    commission=getattr(pos, "commission", 0.0),
                 )
             )
 

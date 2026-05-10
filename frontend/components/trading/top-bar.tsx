@@ -33,7 +33,7 @@ function useAccountBalance() {
     async function fetchBalance() {
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch(`${API_BASE}/trading/account`, {
+        const res = await fetch(`${API_BASE}/trade/account`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (res.ok) {
@@ -46,7 +46,11 @@ function useAccountBalance() {
     }
     fetchBalance();
     const id = setInterval(fetchBalance, 30_000);
-    return () => clearInterval(id);
+    window.addEventListener("trade:closed", fetchBalance);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("trade:closed", fetchBalance);
+    };
   }, []);
 
   return balance;
