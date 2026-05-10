@@ -63,4 +63,6 @@ dist/
 AGENTS.md
 # Generated plots
 *.png
+!photos/**
+!frontend/public/**
 /data
