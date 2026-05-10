@@ -1,45 +1,71 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import {
+  WS_BASE,
+  fetchLatestReport,
+  fetchSignals,
+  fetchOHLCV,
+  toActionLabel,
+} from '@/lib/api';
+import type { ActionLabel, OHLCVBarAPI, AgentSignalAPI, CoordinatorSignalAPI } from '@/lib/api';
 
-interface CandleData {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  color: 'green' | 'red';
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PAIRS = [
+  { key: 'EURUSD', display: 'EUR/USD', decimals: 5 },
+  { key: 'GBPUSD', display: 'GBP/USD', decimals: 5 },
+  { key: 'USDJPY', display: 'USD/JPY', decimals: 3 },
+  { key: 'USDCHF', display: 'USD/CHF', decimals: 5 },
+];
+
+const SIGNAL_COLOR: Record<ActionLabel, string> = {
+  BUY: '#3D9970',
+  SELL: '#C0392B',
+  HOLD: '#8F939C',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function dirToLabel(d: number | string | null): ActionLabel {
+  if (d == null) return 'HOLD';
+  const n = typeof d === 'string' ? parseFloat(d) : d;
+  if (n > 0) return 'BUY';
+  if (n < 0) return 'SELL';
+  return 'HOLD';
 }
 
-// Simple candlestick SVG component
-function CandlestickChart({ data }: { data: CandleData[] }) {
-  const maxPrice = Math.max(...data.map((d) => d.high));
-  const minPrice = Math.min(...data.map((d) => d.low));
-  const range = maxPrice - minPrice;
-  const height = 120;
-  const width = 120;
-  const candleWidth = width / data.length;
+// ── SVG candlestick chart ─────────────────────────────────────────────────────
+
+interface Bar { open: number; high: number; low: number; close: number }
+
+function CandleChart({ bars }: { bars: Bar[] }) {
+  if (bars.length === 0) return <div className="h-28 flex items-center justify-center text-[#8F939C] text-xs font-mono">Loading…</div>;
+
+  const highs = bars.map((b) => b.high);
+  const lows = bars.map((b) => b.low);
+  const maxP = Math.max(...highs);
+  const minP = Math.min(...lows);
+  const range = maxP - minP || 1;
+  const H = 112;
+  const W = 320;
+  const cw = W / bars.length;
+
+  const y = (price: number) => ((maxP - price) / range) * H;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-full">
-      {data.map((candle, idx) => {
-        const x = idx * candleWidth + candleWidth / 2;
-        const wickX = x;
-
-        // Normalize prices to SVG coordinates
-        const bodyTop = ((maxPrice - Math.max(candle.open, candle.close)) / range) * height;
-        const bodyBottom = ((maxPrice - Math.min(candle.open, candle.close)) / range) * height;
-        const wickTop = ((maxPrice - candle.high) / range) * height;
-        const wickBottom = ((maxPrice - candle.low) / range) * height;
-
-        const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
-        const candleColor = candle.color === 'green' ? '#3D9970' : '#C0392B';
-
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      {bars.map((b, i) => {
+        const bull = b.close >= b.open;
+        const color = bull ? '#3D9970' : '#C0392B';
+        const cx = i * cw + cw / 2;
+        const bodyTop = y(Math.max(b.open, b.close));
+        const bodyH = Math.max(Math.abs(y(b.open) - y(b.close)), 1);
         return (
-          <g key={idx}>
-            {/* Wick */}
-            <line x1={wickX} y1={wickTop} x2={wickX} y2={wickBottom} stroke={candleColor} strokeWidth="0.5" opacity="0.6" />
-            {/* Body */}
-            <rect x={x - candleWidth / 3} y={bodyTop} width={candleWidth * 0.6} height={bodyHeight} fill={candleColor} />
+          <g key={i}>
+            <line x1={cx} y1={y(b.high)} x2={cx} y2={y(b.low)} stroke={color} strokeWidth="0.6" opacity="0.6" />
+            <rect x={cx - cw * 0.35} y={bodyTop} width={cw * 0.7} height={bodyH} fill={color} />
           </g>
         );
       })}
@@ -47,192 +73,260 @@ function CandlestickChart({ data }: { data: CandleData[] }) {
   );
 }
 
-// Sample data for candlestick chart
-const sampleCandles: CandleData[] = [
-  { open: 1.081, high: 1.084, low: 1.080, close: 1.082, color: 'green' },
-  { open: 1.082, high: 1.085, low: 1.081, close: 1.083, color: 'green' },
-  { open: 1.083, high: 1.086, low: 1.082, close: 1.084, color: 'green' },
-  { open: 1.084, high: 1.087, low: 1.083, close: 1.085, color: 'green' },
-  { open: 1.085, high: 1.088, low: 1.084, close: 1.086, color: 'green' },
-  { open: 1.086, high: 1.089, low: 1.085, close: 1.087, color: 'green' },
-  { open: 1.087, high: 1.088, low: 1.084, close: 1.085, color: 'red' },
-  { open: 1.085, high: 1.086, low: 1.083, close: 1.084, color: 'red' },
-  { open: 1.084, high: 1.090, low: 1.082, close: 1.088, color: 'green' },
-  { open: 1.088, high: 1.091, low: 1.087, close: 1.089, color: 'green' },
-  { open: 1.089, high: 1.092, low: 1.088, close: 1.090, color: 'green' },
-  { open: 1.090, high: 1.093, low: 1.089, close: 1.091, color: 'green' },
-  { open: 1.091, high: 1.094, low: 1.090, close: 1.092, color: 'green' },
-  { open: 1.092, high: 1.095, low: 1.091, close: 1.093, color: 'green' },
-  { open: 1.093, high: 1.096, low: 1.092, close: 1.094, color: 'green' },
-  { open: 1.084, high: 1.088, low: 1.082, close: 1.086, color: 'green' },
-  { open: 1.086, high: 1.089, low: 1.085, close: 1.087, color: 'green' },
-  { open: 1.087, high: 1.090, low: 1.086, close: 1.088, color: 'green' },
-  { open: 1.083, high: 1.087, low: 1.081, close: 1.085, color: 'green' },
-  { open: 1.085, high: 1.088, low: 1.084, close: 1.084, color: 'red' },
-];
+// ── Data hook ─────────────────────────────────────────────────────────────────
 
-interface PairData {
-  name: string;
-  price: number;
-  change: number;
-  signal: 'HOLD' | 'LONG' | 'SHORT';
-  confidence: number;
+interface HeroState {
+  bars: Bar[];
+  bid: number | null;
+  prevClose: number | null;
+  coord: CoordinatorSignalAPI | null;
+  agent: AgentSignalAPI | null;
+  reportDate: string | null;
 }
 
-const currencyPairs: Record<string, PairData> = {
-  'EUR/USD': { name: 'EUR/USD', price: 1.0842, change: 0.12, signal: 'HOLD', confidence: 61 },
-  'GBP/USD': { name: 'GBP/USD', price: 1.2731, change: 0.34, signal: 'LONG', confidence: 74 },
-  'USD/JPY': { name: 'USD/JPY', price: 149.82, change: -0.21, signal: 'SHORT', confidence: 68 },
-  'USD/CHF': { name: 'USD/CHF', price: 0.8943, change: 0.07, signal: 'HOLD', confidence: 55 },
-};
+function useHeroData(pairKey: string): HeroState {
+  const [state, setState] = useState<HeroState>({
+    bars: [], bid: null, prevClose: null, coord: null, agent: null, reportDate: null,
+  });
 
-interface AgentVote {
-  agent: string;
-  vote: 'HOLD' | 'LONG' | 'SHORT';
-  confidence: number;
+  const patch = (p: Partial<HeroState>) => setState((s) => ({ ...s, ...p }));
+  const setStateRef = useRef(setState);
+  setStateRef.current = setState;
+
+  // OHLCV bars + previous close
+  useEffect(() => {
+    let cancelled = false;
+    patch({ bars: [], prevClose: null });
+    fetchOHLCV(pairKey, 'H1', 3).then((raw: OHLCVBarAPI[]) => {
+      if (cancelled) return;
+      const bars: Bar[] = raw.slice(-40).map((b) => ({
+        open: b.open, high: b.high, low: b.low, close: b.close,
+      }));
+      // D1 for previous close
+      fetchOHLCV(pairKey, 'D1', 2).then((daily) => {
+        if (cancelled) return;
+        const prevClose = daily.length >= 2 ? daily[daily.length - 2].close : (daily[0]?.close ?? null);
+        patch({ bars, prevClose });
+      }).catch(() => patch({ bars }));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [pairKey]);
+
+  // Live tick via WebSocket
+  useEffect(() => {
+    patch({ bid: null });
+    let closed = false;
+    let ws: WebSocket;
+    let timer: ReturnType<typeof setTimeout>;
+
+    function connect() {
+      if (closed) return;
+      ws = new WebSocket(`${WS_BASE}/ws/candles/${pairKey}/M1`);
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data as string);
+          if (msg.type === 'tick') patch({ bid: Number(msg.bid) });
+          else if (msg.type === 'candle_update') {
+            setStateRef.current((s) => {
+              const bars = [...s.bars];
+              const last = bars[bars.length - 1];
+              if (last) {
+                bars[bars.length - 1] = {
+                  ...last,
+                  high: Math.max(last.high, Number(msg.close)),
+                  low: Math.min(last.low, Number(msg.close)),
+                  close: Number(msg.close),
+                };
+              }
+              return { ...s, bars };
+            });
+          }
+        } catch { /* ignore */ }
+      };
+      ws.onclose = () => { if (!closed) timer = setTimeout(connect, 3000); };
+      ws.onerror = () => { try { ws.close(); } catch { /* ignore */ } };
+    }
+    connect();
+    return () => { closed = true; clearTimeout(timer); try { ws?.close(); } catch { /* ignore */ } };
+  }, [pairKey]);
+
+  // Coordinator + agent signals
+  useEffect(() => {
+    let cancelled = false;
+    patch({ coord: null, agent: null, reportDate: null });
+    (async () => {
+      try {
+        const report = await fetchLatestReport();
+        const { coordinator_signals, agent_signals } = await fetchSignals(report.date);
+        if (cancelled) return;
+        patch({
+          coord: coordinator_signals.find((s) => s.pair === pairKey) ?? null,
+          agent: agent_signals.find((s) => s.pair === pairKey) ?? null,
+          reportDate: report.date,
+        });
+      } catch { /* backend offline */ }
+    })();
+    return () => { cancelled = true; };
+  }, [pairKey]);
+
+  return state;
 }
 
-const agentVotes: Record<string, AgentVote[]> = {
-  'EUR/USD': [
-    { agent: 'TECHNICAL', vote: 'HOLD', confidence: 58 },
-    { agent: 'MACRO', vote: 'LONG', confidence: 72 },
-    { agent: 'SENTIMENT', vote: 'SHORT', confidence: 44 },
-  ],
-};
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Hero() {
-  const [activePair, setActivePair] = useState('EUR/USD');
-  const currentPair = currencyPairs[activePair];
+  const [activePairIdx, setActivePairIdx] = useState(0);
+  const activePair = PAIRS[activePairIdx];
+  const { bars, bid, prevClose, coord, agent, reportDate } = useHeroData(activePair.key);
 
-  const getSignalColor = (signal: string) => {
-    switch (signal) {
-      case 'LONG':
-        return '#3D9970';
-      case 'SHORT':
-        return '#C0392B';
-      case 'HOLD':
-      default:
-        return '#8F939C';
-    }
-  };
+  const displayPrice = bid ?? (bars.length ? bars[bars.length - 1].close : null);
+  const changePct =
+    displayPrice != null && prevClose != null && prevClose !== 0
+      ? ((displayPrice - prevClose) / prevClose) * 100
+      : null;
+  const positive = changePct == null ? true : changePct >= 0;
+
+  const coordAction = toActionLabel(coord?.suggested_action ?? null);
+  const conviction = coord?.conviction_score != null ? Math.round(coord.conviction_score * 100) : null;
+
+  const agentRows = [
+    { label: 'TECHNICAL', action: dirToLabel(agent?.tech_direction ?? null), conf: agent?.tech_confidence != null ? Math.round(agent.tech_confidence * 100) : null },
+    { label: 'MACRO', action: dirToLabel(agent?.macro_direction ?? null), conf: agent?.macro_confidence != null ? Math.round(agent.macro_confidence * 100) : null },
+    { label: 'GEOPOLITICAL', action: dirToLabel(agent?.geo_bilateral_risk ?? null), conf: null },
+  ];
 
   return (
-    <section
-      id="hero"
-      className="relative min-h-screen w-full pt-24 pb-12 overflow-hidden flex items-center"
-    >
-      {/* Content */}
+    <section id="hero" className="relative min-h-screen w-full pt-24 pb-12 flex items-center">
       <div className="relative z-10 max-w-7xl mx-auto w-full px-6 flex items-center gap-12">
+
         {/* Left column */}
         <div className="flex-1">
-          {/* Label */}
           <div className="mb-6">
             <span className="text-[#B3902E] font-mono text-xs uppercase tracking-widest">
               Multi-Agent FX Research Platform
             </span>
           </div>
 
-          {/* Heading */}
           <h1 className="text-5xl md:text-6xl font-bold text-[#E8ECF0] mb-4 leading-tight">
             FX-AlphaLab
           </h1>
 
-          {/* Subtitle */}
           <p className="text-[#BBC0CB] text-lg mb-6 max-w-sm">
             Multi-agent intelligence for explainable FX market analysis.
           </p>
 
-          {/* Description */}
-          <p className="text-[#8F939C] text-sm mb-10 max-w-lg" style={{ maxWidth: '44ch' }}>
-            Market data, macro indicators, central bank sentiment, and agent reasoning — unified in one
-            research-grade dashboard.
+          <p className="text-[#8F939C] text-sm mb-10" style={{ maxWidth: '44ch' }}>
+            Market data, macro indicators, central bank sentiment, and agent reasoning — unified in one research-grade dashboard.
           </p>
 
-          {/* CTAs */}
           <div className="flex gap-4 mb-10">
-            <button className="px-6 py-3 bg-[#294F69] text-[#E8ECF0] rounded-lg font-medium text-sm hover:bg-[#3A5F7A] transition-colors">
+            <Link
+              href="/dashboard"
+              className="px-6 py-3 bg-[#294F69] text-[#E8ECF0] rounded-lg font-medium text-sm hover:bg-[#3A5F7A] transition-colors"
+            >
               Open Dashboard
-            </button>
-            <button className="px-6 py-3 border border-[#294F69] text-[#294F69] rounded-lg font-medium text-sm hover:bg-[rgba(41,79,105,0.1)] transition-colors">
+            </Link>
+            <button
+              onClick={() => document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-6 py-3 border border-[#294F69] text-[#8CB8D0] rounded-lg font-medium text-sm hover:bg-[rgba(41,79,105,0.1)] transition-colors"
+            >
               View Architecture
             </button>
           </div>
 
-          {/* Trust badges */}
           <div className="flex flex-wrap gap-4 text-[#8F939C] text-xs font-mono">
             <span>● 5 Active Agents</span>
             <span>● Medallion Pipeline</span>
-            <span>● CRISP-DM W4</span>
+            <span>● Live MT5 Feed</span>
           </div>
         </div>
 
-        {/* Right column - Glassmorphic card */}
+        {/* Right column — live data card */}
         <div
           className="flex-1 hidden lg:flex flex-col p-6 rounded-xl border border-[rgba(143,147,156,0.20)]"
-          style={{
-            backdropFilter: 'blur(8px)',
-            background: 'rgba(17, 21, 25, 0.75)',
-            borderLeft: '3px solid #294F69',
-          }}
+          style={{ backdropFilter: 'blur(8px)', background: 'rgba(17,21,25,0.80)', borderLeft: '3px solid #294F69' }}
         >
-          {/* Pair info */}
+          {/* Pair tabs */}
+          <div className="flex gap-1 mb-4">
+            {PAIRS.map((p, i) => (
+              <button
+                key={p.key}
+                onClick={() => setActivePairIdx(i)}
+                className="px-3 py-1 rounded text-xs font-mono transition-all"
+                style={{
+                  background: i === activePairIdx ? 'rgba(41,79,105,0.4)' : 'transparent',
+                  color: i === activePairIdx ? '#E8ECF0' : '#8F939C',
+                  border: `1px solid ${i === activePairIdx ? 'rgba(41,79,105,0.6)' : 'transparent'}`,
+                }}
+              >
+                {p.display}
+              </button>
+            ))}
+          </div>
+
+          {/* Price header */}
           <div className="flex items-end justify-between mb-4 pb-4 border-b border-[rgba(143,147,156,0.10)]">
             <div>
               <p className="text-[#8F939C] text-xs font-mono mb-1">PAIR</p>
-              <p className="text-[#E8ECF0] font-mono text-lg font-semibold">{currentPair.name}</p>
+              <p className="text-[#E8ECF0] font-mono text-lg font-semibold">{activePair.display}</p>
             </div>
             <div className="text-right">
-              <p className="text-[#E8ECF0] font-mono text-xl font-semibold">{currentPair.price.toFixed(4)}</p>
-              <p className={`text-xs font-mono ${currentPair.change >= 0 ? 'text-[#3D9970]' : 'text-[#C0392B]'}`}>
-                {currentPair.change >= 0 ? '▲' : '▼'} {Math.abs(currentPair.change).toFixed(2)}%
+              <p className="text-[#E8ECF0] font-mono text-xl font-semibold">
+                {displayPrice != null ? displayPrice.toFixed(activePair.decimals) : '—'}
               </p>
+              {changePct != null ? (
+                <p className={`text-xs font-mono ${positive ? 'text-[#3D9970]' : 'text-[#C0392B]'}`}>
+                  {positive ? '▲' : '▼'} {Math.abs(changePct).toFixed(2)}%
+                </p>
+              ) : (
+                <p className="text-[#8F939C] text-xs font-mono">—</p>
+              )}
             </div>
           </div>
 
           {/* Chart */}
-          <div className="mb-4">
-            <CandlestickChart data={sampleCandles} />
+          <div className="mb-4 h-28">
+            <CandleChart bars={bars} />
           </div>
 
-          {/* Signal */}
+          {/* Coordinator signal */}
           <div className="flex items-center justify-between mb-4 pb-4 border-b border-[rgba(143,147,156,0.10)]">
             <p className="text-[#8F939C] text-xs font-mono">SIGNAL</p>
             <div className="flex items-center gap-2">
               <span
-                className="px-2 py-1 rounded text-xs font-mono font-semibold text-[#161D22]"
-                style={{ backgroundColor: getSignalColor(currentPair.signal) }}
+                className="px-2 py-1 rounded text-xs font-mono font-semibold text-[#0E1418]"
+                style={{ backgroundColor: SIGNAL_COLOR[coordAction] }}
               >
-                {currentPair.signal}
+                {coordAction}
               </span>
-              <p className="text-[#BBC0CB] text-xs font-mono">Confidence: {currentPair.confidence}%</p>
+              <p className="text-[#BBC0CB] text-xs font-mono">
+                {conviction != null ? `Conviction ${conviction}%` : '—'}
+              </p>
             </div>
           </div>
 
           {/* Agent votes */}
           <div className="space-y-2 mb-4 pb-4 border-b border-[rgba(143,147,156,0.10)]">
-            {agentVotes[activePair].map((vote) => (
-              <div key={vote.agent} className="flex items-center justify-between text-xs">
-                <span className="text-[#8F939C] font-mono">{vote.agent}</span>
+            {agentRows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between text-xs">
+                <span className="text-[#8F939C] font-mono">{row.label}</span>
                 <div className="flex items-center gap-2">
                   <span
-                    className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-[#161D22]"
-                    style={{ backgroundColor: getSignalColor(vote.vote) }}
+                    className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold text-[#0E1418]"
+                    style={{ backgroundColor: SIGNAL_COLOR[row.action] }}
                   >
-                    {vote.vote}
+                    {row.action}
                   </span>
-                  <span className="text-[#BBC0CB] font-mono">{vote.confidence}%</span>
+                  <span className="text-[#BBC0CB] font-mono">{row.conf != null ? `${row.conf}%` : '—'}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Latest event */}
-          <div className="mb-3">
-            <p className="text-[#8F939C] text-xs truncate">ECB holds rates — Lagarde signals data dependency</p>
-          </div>
-
           {/* Run ID */}
-          <p className="text-[#8F939C] text-[10px] font-mono">RUN-2024-11-03-0842</p>
+          <p className="text-[#8F939C] text-[10px] font-mono">
+            {reportDate ? `RUN-${reportDate}` : 'RUN-—'}
+          </p>
         </div>
       </div>
     </section>
