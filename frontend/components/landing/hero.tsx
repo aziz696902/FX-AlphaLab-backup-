@@ -196,11 +196,11 @@ export default function Hero() {
   ];
 
   return (
-    <section id="hero" className="relative min-h-screen w-full pt-24 pb-12 flex items-center overflow-hidden">
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 flex items-center gap-8">
+    <section id="hero" className="relative w-full flex items-center overflow-hidden" style={{ height: '100vh' }}>
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 flex items-center gap-8" style={{ height: 'calc(100vh - 80px)', paddingTop: '80px' }}>
 
         {/* Left column */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="mb-6">
             <span className="text-[#B3902E] font-mono text-xs uppercase tracking-widest">
               Multi-Agent FX Research Platform
@@ -250,11 +250,12 @@ export default function Hero() {
             borderLeft: '3px solid #294F69',
             width: '42%',
             flexShrink: 0,
+            height: '100%',
             maxHeight: 'calc(100vh - 140px)',
           }}
         >
-          {/* inner scroll container */}
-          <div className="flex flex-col p-5 overflow-y-auto" style={{ fontSize: '0.82rem' }}>
+          {/* inner scroll — flex:1 + min-height:0 is required for overflow-y to activate in a flex child */}
+          <div className="flex flex-col p-5 overflow-y-auto" style={{ fontSize: '0.82rem', flex: 1, minHeight: 0 }}>
           {/* Pair tabs */}
           <div className="flex gap-1 mb-4">
             {PAIRS.map((p, i) => (
