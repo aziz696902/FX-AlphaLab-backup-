@@ -27,7 +27,7 @@ function CallbackHandler() {
     localStorage.setItem("refresh_token", refresh_token);
     localStorage.setItem("user", user);
 
-    router.replace("/");
+    router.replace("/dashboard");
   }, [params, router]);
 
   return (

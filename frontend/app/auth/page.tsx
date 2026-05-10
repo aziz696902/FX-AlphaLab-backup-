@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,13 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
 
 export default function AuthPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    if (localStorage.getItem("access_token")) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [oauthError, setOauthError] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -92,7 +99,7 @@ export default function AuthPage() {
         return;
       }
       storeTokens(data as TokenResponse);
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       setLoginError("Cannot reach server. Is the backend running?");
     } finally {
@@ -129,7 +136,7 @@ export default function AuthPage() {
         return;
       }
       storeTokens(data as TokenResponse);
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       setSignupError("Cannot reach server. Is the backend running?");
     } finally {
