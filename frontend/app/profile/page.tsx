@@ -146,10 +146,10 @@ export default function ProfilePage() {
     <>
       <style>{style}</style>
 
-      <div className="min-h-screen bg-[#E8EAEF] flex flex-col">
+      <div className="min-h-screen bg-[#0D0F14] flex flex-col">
 
         {/* ── Top bar ────────────────────────────────────────────────────────── */}
-        <header className="h-12 bg-[#1A1D24] flex items-center px-6 gap-4 shrink-0">
+        <header className="h-12 bg-[#080A0E] border-b border-[#1E2130] flex items-center px-6 gap-4 shrink-0">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-2 text-[#6B7280] hover:text-white transition-colors text-xs tracking-widest uppercase"
@@ -165,7 +165,7 @@ export default function ProfilePage() {
         <div className="flex flex-1 overflow-hidden">
 
           {/* LEFT SIDEBAR — identity + stats */}
-          <aside className="w-72 shrink-0 bg-[#1A1D24] flex flex-col">
+          <aside className="w-72 shrink-0 bg-[#080A0E] border-r border-[#1E2130] flex flex-col">
 
             {/* Avatar block */}
             <div
@@ -256,7 +256,7 @@ export default function ProfilePage() {
           </aside>
 
           {/* RIGHT PANEL — form */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto bg-[#0D0F14]">
             <form
               onSubmit={handleSave}
               className="max-w-xl mx-auto py-12 px-8"
@@ -268,9 +268,9 @@ export default function ProfilePage() {
                 style={{ animationDelay: "80ms" }}
               >
                 <div className="flex items-center gap-3 mb-6">
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#1F4AA8]">01</span>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#1A1D24]">Identity</span>
-                  <div className="flex-1 h-px bg-[#D1D5DB]" />
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#3B6FD4]">01</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#9CA3AF]">Identity</span>
+                  <div className="flex-1 h-px bg-[#1E2130]" />
                 </div>
 
                 <div className="space-y-5">
@@ -299,10 +299,10 @@ export default function ProfilePage() {
                 style={{ animationDelay: "140ms" }}
               >
                 <div className="flex items-center gap-3 mb-6">
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#1F4AA8]">02</span>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#1A1D24]">Security</span>
-                  <div className="flex-1 h-px bg-[#D1D5DB]" />
-                  <span className="text-[10px] text-[#9CA3AF] tracking-wide">Leave blank to keep current password</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#3B6FD4]">02</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#9CA3AF]">Security</span>
+                  <div className="flex-1 h-px bg-[#1E2130]" />
+                  <span className="text-[10px] text-[#4B5563] tracking-wide">Leave blank to keep current password</span>
                 </div>
 
                 <div className="space-y-5">
@@ -343,8 +343,8 @@ export default function ProfilePage() {
                 <div
                   className={`anim-row mt-6 flex items-center gap-3 px-4 py-3 border-l-2 text-sm ${
                     toast.ok
-                      ? "bg-[#F0FDF9] border-[#10B981] text-[#065F46]"
-                      : "bg-[#FEF2F2] border-[#DC2626] text-[#991B1B]"
+                      ? "bg-[#0D2420] border-[#10B981] text-[#6EE7B7]"
+                      : "bg-[#1F0A0A] border-[#DC2626] text-[#FCA5A5]"
                   }`}
                   style={{ animationDelay: "0ms" }}
                 >
@@ -399,7 +399,7 @@ function Field({
     <div className="group">
       <label
         htmlFor={id}
-        className="block text-[10px] font-bold tracking-widest uppercase text-[#6B7280] mb-1.5 group-focus-within:text-[#1F4AA8] transition-colors"
+        className="block text-[10px] font-bold tracking-widest uppercase text-[#4B5563] mb-1.5 group-focus-within:text-[#3B6FD4] transition-colors"
       >
         {label}
       </label>
@@ -410,7 +410,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className="w-full h-10 bg-white border border-[#D1D5DB] px-3 text-sm text-[#1A1D24] placeholder:text-[#D1D5DB] focus:outline-none focus:border-[#1F4AA8] focus:ring-1 focus:ring-[#1F4AA8]/20 transition-all font-mono rounded-none"
+        className="w-full h-10 bg-[#080A0E] border border-[#1E2130] px-3 text-sm text-[#E5E7EB] placeholder:text-[#2A2D3A] focus:outline-none focus:border-[#1F4AA8] focus:ring-1 focus:ring-[#1F4AA8]/30 transition-all font-mono rounded-none"
       />
     </div>
   );
