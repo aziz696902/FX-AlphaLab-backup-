@@ -21,7 +21,7 @@ export default function LandingPage() {
       </BgZone>
 
       {/* Black gap */}
-      <div style={{ height: 180, background: '#000' }} />
+      <div style={{ height: 320, background: '#000' }} />
 
       {/* Zone 2 — second background pinned */}
       <BgZone bg="/bg-scroll-1.png">
@@ -31,7 +31,7 @@ export default function LandingPage() {
       </BgZone>
 
       {/* Black gap */}
-      <div style={{ height: 180, background: '#000' }} />
+      <div style={{ height: 320, background: '#000' }} />
 
       {/* Zone 3 — third background pinned */}
       <BgZone bg="/bg-scroll-2.png">
