@@ -196,11 +196,11 @@ export default function Hero() {
   ];
 
   return (
-    <section id="hero" className="relative min-h-screen w-full pt-24 pb-12 flex items-center">
-      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 flex items-center gap-12">
+    <section id="hero" className="relative min-h-screen w-full pt-24 pb-12 flex items-center overflow-hidden">
+      <div className="relative z-10 max-w-7xl mx-auto w-full px-6 flex items-center gap-8">
 
         {/* Left column */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="mb-6">
             <span className="text-[#B3902E] font-mono text-xs uppercase tracking-widest">
               Multi-Agent FX Research Platform
@@ -243,9 +243,18 @@ export default function Hero() {
 
         {/* Right column — live data card */}
         <div
-          className="flex-1 hidden lg:flex flex-col p-6 rounded-xl border border-[rgba(143,147,156,0.20)]"
-          style={{ backdropFilter: 'blur(8px)', background: 'rgba(17,21,25,0.80)', borderLeft: '3px solid #294F69' }}
+          className="hidden lg:flex flex-col rounded-xl border border-[rgba(143,147,156,0.20)] overflow-hidden"
+          style={{
+            backdropFilter: 'blur(8px)',
+            background: 'rgba(17,21,25,0.80)',
+            borderLeft: '3px solid #294F69',
+            width: '42%',
+            flexShrink: 0,
+            maxHeight: 'calc(100vh - 140px)',
+          }}
         >
+          {/* inner scroll container */}
+          <div className="flex flex-col p-5 overflow-y-auto" style={{ fontSize: '0.82rem' }}>
           {/* Pair tabs */}
           <div className="flex gap-1 mb-4">
             {PAIRS.map((p, i) => (
@@ -285,7 +294,7 @@ export default function Hero() {
           </div>
 
           {/* Chart */}
-          <div className="mb-4 h-28">
+          <div className="mb-4 h-20">
             <CandleChart bars={bars} />
           </div>
 
@@ -327,6 +336,7 @@ export default function Hero() {
           <p className="text-[#8F939C] text-[10px] font-mono">
             {reportDate ? `RUN-${reportDate}` : 'RUN-—'}
           </p>
+          </div>{/* end inner scroll */}
         </div>
       </div>
     </section>
