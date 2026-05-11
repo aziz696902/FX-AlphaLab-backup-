@@ -25,14 +25,14 @@ from src.backend.schemas.chat import ChatRequest
 from src.backend.services.chat.chat_service import stream_response
 from src.backend.services.chat.context_builder import MT5State
 from src.live.mt5_connection import mt5_connection
-from src.rag.stub import NoOpRetriever
+from src.rag.chroma_retriever import ChromaRetriever
+from src.shared.config import Config
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Singleton retriever — swap NoOpRetriever for a real impl when RAG is ready.
-_retriever = NoOpRetriever()
+_retriever = ChromaRetriever(chroma_dir=Config.CHROMA_DIR)
 
 
 async def _fetch_mt5_state() -> MT5State:

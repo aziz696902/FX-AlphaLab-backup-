@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from src.backend.dependencies import get_db
 from src.backend.schemas.auth import UserResponse
 from src.backend.security import get_current_user
+from src.shared.config import Config
 from src.shared.db.models import UserAccount, UserMT5Link
 
 logger = logging.getLogger(__name__)
@@ -138,3 +139,31 @@ def trigger_inference(
         status="started",
         message="Inference pipeline is running in the background. Check server logs for progress.",
     )
+
+
+class ReindexResponse(BaseModel):
+    status: str
+    upserted: int
+    evicted: int
+    total: int
+
+
+@router.post("/rag/reindex", response_model=ReindexResponse)
+def reindex_rag(
+    _admin: UserAccount = Depends(_require_admin),
+) -> ReindexResponse:
+    """Rebuild the RAG vector index from the last 30 days of CB documents and GDELT GKG data.
+
+    Runs synchronously — may take several minutes depending on corpus size.
+    """
+    try:
+        from src.rag.indexer import build_index
+
+        stats = build_index(data_dir=Config.DATA_DIR, chroma_dir=Config.CHROMA_DIR)
+        return ReindexResponse(status="ok", **stats)
+    except Exception as exc:
+        logger.exception("RAG reindex failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Reindex failed: {exc}",
+        ) from exc
