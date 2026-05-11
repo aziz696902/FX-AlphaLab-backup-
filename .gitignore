@@ -35,6 +35,7 @@ credentials/
 data/raw/
 data/processed/
 data/cache/
+data/chroma/
 
 # Jupyter
 .ipynb_checkpoints/
