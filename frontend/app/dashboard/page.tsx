@@ -66,11 +66,9 @@ export default function TradingDashboard() {
           />
         )}
 
-        <div className="flex-1 flex flex-col overflow-hidden p-2 gap-0 min-w-[300px]">
+        <div className="flex-1 flex flex-col overflow-hidden pt-2 gap-0 min-w-[300px]">
           <CandlestickChart
             symbol={activeInstrument}
-            coordinatorSignal={inference.coordinatorSignals.get(activeInstrument) ?? null}
-            report={inference.report}
           />
 
           <Splitter

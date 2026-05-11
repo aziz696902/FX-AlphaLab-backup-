@@ -11,10 +11,8 @@ import {
 } from "lightweight-charts";
 import { LiveTick, LiveStatus } from "@/lib/api";
 import { useLiveCandles } from "@/hooks/use-live-candles";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useOhlcv } from "@/hooks/use-ohlcv";
-import { CoordinatorReportAPI, CoordinatorSignalAPI, toActionLabel } from "@/lib/api";
 
 interface TooltipData {
   time: string;
@@ -31,8 +29,6 @@ interface TooltipData {
 
 interface CandlestickChartProps {
   symbol: string;
-  coordinatorSignal: CoordinatorSignalAPI | null;
-  report: CoordinatorReportAPI | null;
   onTick?: (tick: LiveTick) => void;
 }
 
@@ -48,7 +44,7 @@ const TF_DAYS: Record<Timeframe, number> = {
 
 const TIMEFRAMES: Timeframe[] = ["M1", "M15", "H1", "H4", "D1"];
 
-export function CandlestickChart({ symbol, coordinatorSignal, report, onTick }: CandlestickChartProps) {
+export function CandlestickChart({ symbol, onTick }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,17 +57,6 @@ export function CandlestickChart({ symbol, coordinatorSignal, report, onTick }: 
   const [liveTick, setLiveTick] = useState<LiveTick | null>(null);
 
   const { bars, loading: ohlcvLoading } = useOhlcv(symbol, activeTimeframe, TF_DAYS[activeTimeframe]);
-
-  // Build overlay values from real coordinator signal
-  const action = toActionLabel(coordinatorSignal?.suggested_action ?? null);
-  const conviction = coordinatorSignal?.conviction_score != null
-    ? Math.round(coordinatorSignal.conviction_score * 100)
-    : null;
-  const posSize = coordinatorSignal?.position_size_pct ?? null;
-  const slPct = coordinatorSignal?.sl_pct ?? null;
-  const tpPct = coordinatorSignal?.tp_pct ?? null;
-  const regime = coordinatorSignal?.regime ?? null;
-  const topPick = report?.top_pick ?? null;
 
   // ── Chart init ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -221,59 +206,9 @@ export function CandlestickChart({ symbol, coordinatorSignal, report, onTick }: 
 
   return (
     <div className="flex-1 bg-card rounded-md border border-border overflow-hidden flex flex-col h-full min-h-[260px]">
-      {/* Overlay Strip */}
-      <div className="h-10 bg-muted/50 border-b border-border flex items-center px-4 gap-6 shrink-0">
-        {topPick && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Top Pick</span>
-            <span className="text-xs font-semibold">{topPick}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Action</span>
-          <Badge
-            className={
-              action === "BUY"
-                ? "bg-[var(--buy)] text-white text-[10px] px-1.5 h-5"
-                : action === "SELL"
-                ? "bg-[var(--sell)] text-white text-[10px] px-1.5 h-5"
-                : "bg-muted text-muted-foreground text-[10px] px-1.5 h-5"
-            }
-          >
-            {coordinatorSignal ? action : "—"}
-          </Badge>
-        </div>
-        {conviction != null && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Conviction</span>
-            <span className="text-xs font-mono font-medium">{conviction}%</span>
-          </div>
-        )}
-        {posSize != null && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Pos Size</span>
-            <span className="text-xs font-mono">{posSize.toFixed(1)}%</span>
-          </div>
-        )}
-        {slPct != null && tpPct != null && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">SL/TP</span>
-            <span className="text-xs font-mono">
-              <span className="text-[var(--short)]">{slPct.toFixed(2)}%</span>
-              {" / "}
-              <span className="text-[var(--long)]">{tpPct.toFixed(2)}%</span>
-            </span>
-          </div>
-        )}
-        {regime && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Regime</span>
-            <Badge variant="secondary" className="text-[10px] px-1.5 h-5">
-              {regime}
-            </Badge>
-          </div>
-        )}
-        <div className="flex items-center gap-0.5 ml-auto">
+      {/* Chart toolbar */}
+      <div className="h-10 bg-muted/50 border-b border-border flex items-center px-3 gap-1 shrink-0">
+        <div className="flex items-center gap-0.5">
           {TIMEFRAMES.map((tf) => (
             <button
               key={tf}
@@ -291,22 +226,32 @@ export function CandlestickChart({ symbol, coordinatorSignal, report, onTick }: 
           {ohlcvLoading && (
             <span className="text-[10px] text-muted-foreground ml-2">Loading…</span>
           )}
-          {/* Live status + tick */}
-          <div className="flex items-center gap-3 ml-3">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "inline-block w-2 h-2 rounded-full",
-                  liveStatus === "connected" ? "bg-green-500" : liveStatus === "connecting" ? "bg-gray-400" : liveStatus === "reconnecting" ? "bg-yellow-400 animate-pulse" : "bg-red-500"
-                )}
-              />
-              <span className="text-[10px]">{liveStatus === "connected" ? "Live" : liveStatus === "connecting" ? "Connecting" : liveStatus === "reconnecting" ? "Reconnecting" : "Offline"}</span>
+        </div>
+
+        <div className="flex items-center gap-3 ml-auto">
+          {liveTick && (
+            <div className="font-mono text-xs">
+              <span className="text-[var(--buy)]">{liveTick.ask.toFixed(5)}</span>
+              <span className="text-muted-foreground mx-1">/</span>
+              <span className="text-[var(--sell)]">{liveTick.bid.toFixed(5)}</span>
             </div>
-            {liveTick && (
-              <div className="font-mono text-xs text-right">
-                {liveTick.bid.toFixed(5)} / {liveTick.ask.toFixed(5)}
-              </div>
-            )}
+          )}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-block w-2 h-2 rounded-full",
+                liveStatus === "connected" ? "bg-green-500" :
+                liveStatus === "connecting" ? "bg-gray-400" :
+                liveStatus === "reconnecting" ? "bg-yellow-400 animate-pulse" :
+                "bg-red-500"
+              )}
+            />
+            <span className="text-[10px] text-muted-foreground">
+              {liveStatus === "connected" ? "Live" :
+               liveStatus === "connecting" ? "Connecting" :
+               liveStatus === "reconnecting" ? "Reconnecting" :
+               "Offline"}
+            </span>
           </div>
         </div>
       </div>
