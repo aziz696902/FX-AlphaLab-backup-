@@ -1,12 +1,11 @@
-"""Email service — sends transactional emails via SMTP (stdlib only, no extra deps)."""
+"""Email service — sends transactional emails via Resend (https://resend.com)."""
 
 from __future__ import annotations
 
 import logging
-import smtplib
 import threading
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import requests
 
 from src.shared.config import Config
 
@@ -171,34 +170,17 @@ def _build_welcome_html(full_name: str, email: str) -> str:
 
 def _send(to_email: str, full_name: str) -> None:
     """Send welcome email. Called from a background thread — never raises."""
-    if not Config.SMTP_USER or not Config.SMTP_PASSWORD:
-        logger.warning("SMTP not configured — skipping welcome email for %s", to_email)
-        return
-
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Welcome to FX-AlphaLab — your account is live"
-        msg["From"] = f"{Config.SMTP_FROM_NAME} <{Config.SMTP_USER}>"
-        msg["To"] = to_email
-
-        plain = (
-            f"Welcome to FX-AlphaLab, {full_name or to_email}!\n\n"
-            "Your account is active. Sign in at http://localhost:3000\n\n"
-            "— The FX-AlphaLab Team"
-        )
-        msg.attach(MIMEText(plain, "plain"))
-        msg.attach(MIMEText(_build_welcome_html(full_name or "", to_email), "html"))
-
-        with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
-            server.sendmail(Config.SMTP_USER, to_email, msg.as_string())
-
-        logger.info("Welcome email sent to %s", to_email)
-
-    except Exception:
-        logger.exception("Failed to send welcome email to %s", to_email)
+    plain = (
+        f"Welcome to FX-AlphaLab, {full_name or to_email}!\n\n"
+        "Your account is active. Sign in at http://localhost:3000\n\n"
+        "— The FX-AlphaLab Team"
+    )
+    _send_transactional(
+        to_email,
+        "Welcome to FX-AlphaLab — your account is live",
+        plain,
+        _build_welcome_html(full_name or "", to_email),
+    )
 
 
 def send_welcome_email(to_email: str, full_name: str | None = None) -> None:
@@ -307,25 +289,32 @@ def _build_reset_html(display_name: str, reset_url: str, email: str) -> str:
 
 
 def _send_transactional(to_email: str, subject: str, plain_text: str, html_body: str) -> None:
-    """Send a transactional email. Called from a background thread — never raises."""
-    if not Config.SMTP_USER or not Config.SMTP_PASSWORD:
+    """Send a transactional email via Resend. Called from a background thread — never raises."""
+    if not Config.RESEND_API_KEY:
         logger.warning(
-            "SMTP not configured — skipping email to %s (subject: %s)", to_email, subject
+            "RESEND_API_KEY not configured — skipping email to %s (subject: %s)", to_email, subject
         )
         return
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{Config.SMTP_FROM_NAME} <{Config.SMTP_USER}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText(plain_text, "plain"))
-        msg.attach(MIMEText(html_body, "html"))
-        with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
-            server.sendmail(Config.SMTP_USER, to_email, msg.as_string())
-        logger.info("Email sent to %s (subject: %s)", to_email, subject)
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {Config.RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": Config.EMAIL_FROM,
+                "to": [to_email],
+                "subject": subject,
+                "text": plain_text,
+                "html": html_body,
+            },
+            timeout=10,
+        )
+        if resp.status_code in (200, 201):
+            logger.info("Email sent to %s (subject: %s)", to_email, subject)
+        else:
+            logger.error("Resend returned %s for %s: %s", resp.status_code, to_email, resp.text)
     except Exception:
         logger.exception("Failed to send email to %s (subject: %s)", to_email, subject)
 

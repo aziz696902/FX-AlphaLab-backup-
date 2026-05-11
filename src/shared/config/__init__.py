@@ -77,12 +77,9 @@ class Config:
         "GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback"
     )
 
-    # SMTP / Email settings
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str | None = os.getenv("SMTP_USER")
-    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
-    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "FX-AlphaLab")
+    # Resend email settings
+    RESEND_API_KEY: str | None = os.getenv("RESEND_API_KEY")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "FX-AlphaLab <onboarding@resend.dev>")
 
     # Frontend URL (used in email links)
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
