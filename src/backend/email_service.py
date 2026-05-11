@@ -308,7 +308,7 @@ def _send_transactional(to_email: str, subject: str, plain_text: str, html_body:
             server.ehlo()
             server.starttls()
             server.ehlo()
-            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
+            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD.replace(" ", ""))
             server.sendmail(Config.SMTP_USER, to_email, msg.as_string())
 
         logger.info("Email sent to %s (subject: %s)", to_email, subject)
