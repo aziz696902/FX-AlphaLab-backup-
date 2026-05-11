@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { closeTrade, cancelOrder, LivePosition, LivePendingOrder, HistoricalTrade } from "@/lib/api";
-import { usePositions } from "@/hooks/use-positions";
 
 function formatPrice(price: number): string {
   return price > 0 ? price.toFixed(5) : "—";
@@ -186,11 +185,15 @@ function HistoryRow({ trade }: { trade: HistoricalTrade }) {
 interface BottomPanelProps {
   height?: number;
   mt5Connected: boolean;
+  positions: LivePosition[];
+  pendingOrders: LivePendingOrder[];
+  history: HistoricalTrade[];
+  loading: boolean;
+  refresh: () => void;
 }
 
-export function BottomPanel({ height = 190, mt5Connected }: BottomPanelProps) {
+export function BottomPanel({ height = 190, mt5Connected, positions, pendingOrders, history, loading, refresh }: BottomPanelProps) {
   const [activeTab, setActiveTab] = useState("open");
-  const { positions, pendingOrders, history, loading, refresh } = usePositions();
 
   async function handleClose(ticket: number) {
     try {

@@ -24,13 +24,15 @@ import {
   AgentSignalAPI,
   CoordinatorReportAPI,
   CoordinatorSignalAPI,
+  LiveAccount,
+  LivePosition,
+  LiveTick,
+  fetchNarrative,
   toActionLabel,
   toConfidenceLabel,
 } from "@/lib/api";
-import { LiveTick } from "@/lib/api";
 import { toast } from "sonner";
 import { useTrade } from "@/hooks/use-trade";
-import { usePositions } from "@/hooks/use-positions";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -253,6 +255,8 @@ interface RightPanelProps {
   agentSignals?: Map<string, AgentSignalAPI>;
   liveTick?: LiveTick | null;
   mt5Connected: boolean;
+  positions: LivePosition[];
+  account: LiveAccount | null;
 }
 
 export function RightPanel({
@@ -263,6 +267,8 @@ export function RightPanel({
   agentSignals,
   liveTick,
   mt5Connected,
+  positions,
+  account,
 }: RightPanelProps) {
   const { canAccess, open: openPaywall } = useUpgradeModal();
   const [analysisRevealed, setAnalysisRevealed] = useState(false);
@@ -312,19 +318,14 @@ export function RightPanel({
     : mockAgentReport.coordinator.narrative_context;
 
   useEffect(() => {
-    if (!report?.narrative_context) return;
+    if (!report?.date || !report?.narrative_context) return;
     setAiNarrative(null);
     setNarrativeLoading(true);
-    fetch("/api/narrate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ context: report.narrative_context }),
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.narrative) setAiNarrative(d.narrative); })
+    fetchNarrative(report.narrative_context as Record<string, unknown>)
+      .then((narrative) => { if (narrative) setAiNarrative(narrative); })
       .catch(() => {})
       .finally(() => setNarrativeLoading(false));
-  }, [report?.narrative_context]);
+  }, [report?.date]);
 
   // Active pair agent signals — real when available, otherwise mock
   const activeAs = agentSignals?.get(activePair.symbol);
@@ -334,7 +335,6 @@ export function RightPanel({
   const sentimentMock = mockAgentReport.sentiment[0];
 
   const reportHref = getReportPath(activePair.symbol);
-  const { positions, account } = usePositions();
   const { closePosition } = useTrade();
 
   return (

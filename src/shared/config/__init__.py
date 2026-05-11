@@ -40,6 +40,7 @@ class Config:
     # API Keys
     FRED_API_KEY: str | None = os.getenv("FRED_API_KEY")
     GROQ_API_KEYS: list[str] = _load_groq_api_keys()
+    GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
 
     # Google Cloud (BigQuery for GDELT)
     GOOGLE_APPLICATION_CREDENTIALS: str | None = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")

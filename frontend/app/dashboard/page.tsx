@@ -11,8 +11,10 @@ import { Splitter } from "@/components/trading/splitter";
 import { useResizableLayout } from "@/hooks/use-resizable-layout";
 import { useInferenceData } from "@/hooks/use-inference-data";
 import { useMt5Status } from "@/hooks/use-mt5-status";
+import { usePositions } from "@/hooks/use-positions";
 import { UpgradeModalProvider } from "@/hooks/use-upgrade-modal";
 import { UpgradeModal } from "@/components/trading/upgrade-modal";
+import { ChatBubble } from "@/components/chat/ChatBubble";
 
 export default function TradingDashboard() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function TradingDashboard() {
   const { sizes, handleMouseDown, resetLayout } = useResizableLayout();
   const inference = useInferenceData();
   const mt5Status = useMt5Status();
+  const livePositions = usePositions();
 
   if (!authed) return null;
 
@@ -77,7 +80,15 @@ export default function TradingDashboard() {
             onMouseDown={(e) => handleMouseDown("bottom", e)}
           />
 
-          <BottomPanel height={sizes.bottomPanel} mt5Connected={mt5Status.connected} />
+          <BottomPanel
+            height={sizes.bottomPanel}
+            mt5Connected={mt5Status.connected}
+            positions={livePositions.positions}
+            pendingOrders={livePositions.pendingOrders}
+            history={livePositions.history}
+            loading={livePositions.loading}
+            refresh={livePositions.refresh}
+          />
         </div>
 
         <Splitter
@@ -93,9 +104,12 @@ export default function TradingDashboard() {
           agentSignals={inference.agentSignals}
           liveTick={liveTick}
           mt5Connected={mt5Status.connected}
+          positions={livePositions.positions}
+          account={livePositions.account}
         />
       </div>
     </div>
+      <ChatBubble />
     </UpgradeModalProvider>
   );
 }

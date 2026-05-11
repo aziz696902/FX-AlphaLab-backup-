@@ -26,6 +26,7 @@ export function useInferenceData(): InferenceData {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const lastDateRef = useRef<string | null>(null);
 
   async function load() {
     abortRef.current?.abort();
@@ -33,15 +34,17 @@ export function useInferenceData(): InferenceData {
 
     try {
       const rep = await fetchLatestReport();
+
+      // Only re-fetch signals and update state when a new report date is available.
+      // Prevents creating new object references (and cascading re-renders) on every poll.
+      if (rep.date === lastDateRef.current) return;
+      lastDateRef.current = rep.date;
+
       const signals = await fetchSignals(rep.date);
 
       setReport(rep);
-      setAgentSignals(
-        new Map(signals.agent_signals.map((s) => [s.pair, s]))
-      );
-      setCoordinatorSignals(
-        new Map(signals.coordinator_signals.map((s) => [s.pair, s]))
-      );
+      setAgentSignals(new Map(signals.agent_signals.map((s) => [s.pair, s])));
+      setCoordinatorSignals(new Map(signals.coordinator_signals.map((s) => [s.pair, s])));
       setError(null);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;

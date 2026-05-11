@@ -23,10 +23,12 @@ from src.backend.routers import (
 )
 from src.backend.routers import (
     auth,
+    chat,
     google_oauth,
     inference,
     live_data,
     mt5,
+    narrate,
     ohlcv,
     reports,
     signals,
@@ -223,6 +225,8 @@ app.include_router(ohlcv.router)
 app.include_router(live_data.router)
 app.include_router(trading.router)
 app.include_router(mt5.router)
+app.include_router(chat.router)
+app.include_router(narrate.router)
 
 
 @app.post("/admin/trigger/{source_id}", tags=["admin"], response_model=TriggerResult)

@@ -126,6 +126,11 @@ export interface OHLCVBarAPI {
 
 export const fetchLatestReport = () => get<CoordinatorReportAPI>("/reports/latest");
 
+export async function fetchNarrative(context: Record<string, unknown>): Promise<string> {
+  const r = await post<{ narrative: string }>("/narrate", { context });
+  return r.narrative;
+}
+
 export const fetchSignals = (date: string) => get<DateSignalsAPI>(`/signals/${date}`);
 
 export const fetchOHLCV = (instrument: string, tf = "H1", days = 30) =>

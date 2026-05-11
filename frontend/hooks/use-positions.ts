@@ -12,7 +12,7 @@ import {
   HistoricalTrade,
 } from "@/lib/api";
 
-export function usePositions(pollIntervalMs = 2000): {
+export function usePositions(pollIntervalMs = 5000): {
   positions: LivePosition[];
   pendingOrders: LivePendingOrder[];
   history: HistoricalTrade[];
