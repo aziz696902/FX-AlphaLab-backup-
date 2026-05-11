@@ -143,7 +143,7 @@ export function UpgradeModal() {
   async function handleDevActivate(tier: Tier) {
     setDevLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_BASE}/auth/users/me/tier`, {
         method: "PATCH",
         headers: {

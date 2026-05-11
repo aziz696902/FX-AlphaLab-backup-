@@ -1,15 +1,15 @@
 "use client";
 
-import { Search, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronDown, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
+import { useWatchlistTicks } from "@/hooks/use-watchlist-ticks";
 import {
   AgentSignalAPI,
   CoordinatorSignalAPI,
   toActionLabel,
-  toConfidenceLabel,
 } from "@/lib/api";
 
 const WATCHLIST_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"];
@@ -85,6 +85,7 @@ export function LeftSidebar({
 
   const { canAccess, open: openPaywall } = useUpgradeModal();
   const hasData = coordinatorSignals.size > 0;
+  const watchlistTicks = useWatchlistTicks();
 
   // Pick a representative pair for Agent Pulse (first available, or EURUSD)
   const pulseSignal = agentSignals.get("EURUSD") ?? agentSignals.values().next().value;
@@ -127,57 +128,43 @@ export function LeftSidebar({
         {/* Watchlist Table */}
         <div className="flex-1 overflow-auto">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-card">
-              <tr className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                <th className="text-left p-2 font-medium">Symbol</th>
-                <th className="text-center p-2 font-medium">Dir</th>
-                <th className="text-center p-2 font-medium">Conf</th>
-                <th className="text-right p-2 font-medium">Action</th>
+            <thead className="sticky top-0 bg-card z-10">
+              <tr className="text-muted-foreground text-[9px] uppercase tracking-wider border-b border-border">
+                <th className="text-left px-2 py-1.5 font-medium">Symbol</th>
+                <th className="text-right px-2 py-1.5 font-medium">Bid</th>
+                <th className="text-right px-2 py-1.5 font-medium">Ask</th>
+                <th className="text-right px-2 py-1.5 font-medium">Spd</th>
+                <th className="text-right px-2 py-1.5 font-medium">Chg%</th>
               </tr>
             </thead>
             <tbody>
               {WATCHLIST_PAIRS.map((pair) => {
                 const cs = coordinatorSignals.get(pair);
                 const action = toActionLabel(cs?.suggested_action ?? null);
-                const conf = toConfidenceLabel(cs?.confidence_tier ?? null);
-                const direction =
-                  action === "BUY" ? "LONG" : action === "SELL" ? "SHORT" : "FLAT";
+                const tick = watchlistTicks.get(pair);
+                const pct = tick?.pctChange ?? null;
+                const isUp = pct !== null && pct >= 0;
+
+                const fmt5 = (n: number) => n.toFixed(pair.includes("JPY") ? 3 : 5);
 
                 return (
                   <tr
                     key={pair}
                     onClick={() => onInstrumentChange(pair)}
                     className={cn(
-                      "hover:bg-accent cursor-pointer transition-colors",
-                      activeInstrument === pair && "bg-accent"
+                      "hover:bg-accent cursor-pointer transition-colors border-b border-border/40 last:border-0",
+                      activeInstrument === pair && "bg-accent",
+                      hasData && action === "BUY" && "border-l-2 border-l-[var(--long)]",
+                      hasData && action === "SELL" && "border-l-2 border-l-[var(--short)]",
                     )}
                   >
-                    <td className="p-2 font-medium">{pair}</td>
-                    <td className="p-2 text-center">
-                      {hasData ? (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-[9px] px-1 py-0 h-4 font-medium",
-                            direction === "LONG" && "bg-[var(--long)]/10 text-[var(--long)]",
-                            direction === "SHORT" && "bg-[var(--short)]/10 text-[var(--short)]",
-                            direction === "FLAT" && "bg-[var(--flat)]/10 text-[var(--flat)]"
-                          )}
-                        >
-                          {direction}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="p-2 text-center font-mono text-muted-foreground">
-                      {hasData ? conf : "—"}
-                    </td>
-                    <td className="p-2 text-right">
+                    {/* Symbol + action badge */}
+                    <td className="px-2 py-2">
+                      <div className="font-semibold text-[11px] leading-tight">{pair}</div>
                       {hasData && cs && (
                         <Badge
                           className={cn(
-                            "text-[9px] px-1.5 h-4",
+                            "text-[8px] px-1 py-0 h-3 mt-0.5 font-medium",
                             action === "BUY" && "bg-[var(--buy)] text-white",
                             action === "SELL" && "bg-[var(--sell)] text-white",
                             action === "HOLD" && "bg-muted text-muted-foreground"
@@ -185,6 +172,35 @@ export function LeftSidebar({
                         >
                           {action}
                         </Badge>
+                      )}
+                    </td>
+                    {/* Bid */}
+                    <td className="px-2 py-2 text-right font-mono text-[10px]">
+                      {tick ? fmt5(tick.bid) : <span className="text-muted-foreground/40">—</span>}
+                    </td>
+                    {/* Ask */}
+                    <td className="px-2 py-2 text-right font-mono text-[10px] text-muted-foreground">
+                      {tick ? fmt5(tick.ask) : <span className="opacity-40">—</span>}
+                    </td>
+                    {/* Spread */}
+                    <td className="px-2 py-2 text-right font-mono text-[10px] text-muted-foreground">
+                      {tick ? tick.spreadPips : <span className="opacity-40">—</span>}
+                    </td>
+                    {/* %Change */}
+                    <td className="px-2 py-2 text-right">
+                      {pct !== null ? (
+                        <span className={cn(
+                          "inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold",
+                          isUp ? "text-[var(--long)]" : "text-[var(--short)]"
+                        )}>
+                          {isUp
+                            ? <TrendingUp className="w-2.5 h-2.5" />
+                            : <TrendingDown className="w-2.5 h-2.5" />
+                          }
+                          {isUp ? "+" : ""}{pct.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-[10px]">—</span>
                       )}
                     </td>
                   </tr>

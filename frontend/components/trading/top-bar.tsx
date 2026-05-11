@@ -56,10 +56,22 @@ function useAccountBalance() {
   return balance;
 }
 
+function signalAge(dateStr: string | null): { label: string; isStale: boolean } {
+  if (!dateStr) return { label: "—", isStale: false };
+  // dateStr is YYYY-MM-DD — treat as UTC midnight
+  const signalMs = new Date(`${dateStr}T00:00:00Z`).getTime();
+  const diffH = Math.floor((Date.now() - signalMs) / 3_600_000);
+  if (diffH < 1) return { label: "just now", isStale: false };
+  if (diffH < 24) return { label: `${diffH}h ago`, isStale: false };
+  const diffD = Math.floor(diffH / 24);
+  return { label: `${diffD}d ago`, isStale: true };
+}
+
 export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, report }: TopBarProps) {
   const router = useRouter();
   const lastUpdated = report?.date ?? null;
   const balance = useAccountBalance();
+  const age = signalAge(lastUpdated);
 
   function handleLogout() {
     localStorage.removeItem("access_token");
@@ -79,10 +91,22 @@ export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, re
         <Badge variant="default" className="bg-[var(--long)] text-white text-[10px] px-1.5 py-0.5 h-5">
           LIVE
         </Badge>
-        <span className="text-xs text-muted-foreground">
-          Signal date:{" "}
-          <span className="font-mono">{lastUpdated ?? "—"}</span>
-        </span>
+        {/* Signal date + age */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">
+            Signal: <span className="font-mono">{lastUpdated ?? "—"}</span>
+          </span>
+          {lastUpdated && (
+            <span className={cn(
+              "text-[10px] font-medium px-1.5 py-0.5 rounded",
+              age.isStale
+                ? "bg-amber-100 text-amber-700 border border-amber-200"
+                : "bg-muted text-muted-foreground"
+            )}>
+              {age.label}
+            </span>
+          )}
+        </div>
         {report?.hold_reason && (
           <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 h-5 border-amber-200">
             HOLD: {report.hold_reason}

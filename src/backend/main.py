@@ -19,6 +19,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.routers import (
+    admin as admin_router,
+)
+from src.backend.routers import (
     auth,
     google_oauth,
     inference,
@@ -209,6 +212,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(admin_router.router)
 app.include_router(reports.router)
 app.include_router(signals.router)
 app.include_router(trades.router)
