@@ -70,6 +70,13 @@ export function LeftSidebar({
   coordinatorSignals,
   agentSignals,
 }: LeftSidebarProps) {
+  const { canAccess, open: openPaywall } = useUpgradeModal();
+  const watchlistTicks = useWatchlistTicks();
+
+  const hasData = coordinatorSignals.size > 0;
+  // Pick a representative pair for Agent Pulse (first available, or EURUSD)
+  const pulseSignal = agentSignals.get("EURUSD") ?? agentSignals.values().next().value;
+
   if (collapsed) {
     return (
       <aside className="w-10 bg-card border-r border-border flex flex-col shrink-0 shadow-[var(--card-shadow)]">
@@ -82,13 +89,6 @@ export function LeftSidebar({
       </aside>
     );
   }
-
-  const { canAccess, open: openPaywall } = useUpgradeModal();
-  const hasData = coordinatorSignals.size > 0;
-  const watchlistTicks = useWatchlistTicks();
-
-  // Pick a representative pair for Agent Pulse (first available, or EURUSD)
-  const pulseSignal = agentSignals.get("EURUSD") ?? agentSignals.values().next().value;
 
   return (
     <aside

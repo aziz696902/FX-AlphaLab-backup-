@@ -305,11 +305,11 @@ function ProfilePageInner() {
               </div>
             )}
 
-            <form onSubmit={handleSave}>
-              <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-2 gap-5">
 
                 {/* ── LEFT COLUMN ── */}
                 <div className="flex flex-col gap-5">
+                  <form onSubmit={handleSave} className="flex flex-col gap-5">
 
                   {/* Identity card */}
                   <SectionCard
@@ -390,6 +390,7 @@ function ProfilePageInner() {
                       </>
                     ) : "Save Changes"}
                   </button>
+                  </form>
                 </div>
 
                 {/* ── RIGHT COLUMN ── */}
@@ -420,7 +421,6 @@ function ProfilePageInner() {
                   </SectionCard>
                 </div>
               </div>
-            </form>
           </div>
         </main>
       </div>

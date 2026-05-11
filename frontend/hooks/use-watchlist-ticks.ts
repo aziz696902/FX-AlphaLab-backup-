@@ -44,7 +44,7 @@ export function useWatchlistTicks(): Map<string, WatchlistTick> {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     function connect(pair: string) {
-      const ws = new WebSocket(`${WS_BASE}/live_data/ws/${pair}`);
+      const ws = new WebSocket(`${WS_BASE}/ws/candles/${pair}/M1`);
 
       ws.onmessage = (e) => {
         try {
