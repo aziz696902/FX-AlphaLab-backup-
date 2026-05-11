@@ -139,18 +139,18 @@ function OrderControls({ symbol }: OrderControlsProps) {
   };
 
   return (
-    <div className="space-y-3 border-t border-border p-3">
-      <div className="flex gap-2">
-        <Button disabled={isPending} onClick={() => place("BUY")} className="h-9 flex-1 bg-[var(--buy)] text-white hover:bg-[var(--buy)]/90" size="sm">
+    <div className="space-y-1.5 border-t border-border p-2">
+      <div className="flex gap-1.5">
+        <Button disabled={isPending} onClick={() => place("BUY")} className="h-8 flex-1 bg-[var(--buy)] text-white hover:bg-[var(--buy)]/90" size="sm">
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-normal">BUY</span>
-            <span className="font-mono text-xs">{askPrice}</span>
+            <span className="text-[10px] font-normal leading-none">BUY</span>
+            <span className="font-mono text-xs leading-none mt-0.5">{askPrice}</span>
           </div>
         </Button>
-        <Button disabled={isPending} onClick={() => place("SELL")} className="h-9 flex-1 bg-[var(--sell)] text-white hover:bg-[var(--sell)]/90" size="sm">
+        <Button disabled={isPending} onClick={() => place("SELL")} className="h-8 flex-1 bg-[var(--sell)] text-white hover:bg-[var(--sell)]/90" size="sm">
           <div className="flex flex-col items-center">
-            <span className="text-[10px] font-normal">SELL</span>
-            <span className="font-mono text-xs">{bidPrice}</span>
+            <span className="text-[10px] font-normal leading-none">SELL</span>
+            <span className="font-mono text-xs leading-none mt-0.5">{bidPrice}</span>
           </div>
         </Button>
       </div>
@@ -159,11 +159,11 @@ function OrderControls({ symbol }: OrderControlsProps) {
         {symbol} spread: <span className="font-mono">{spread}</span> pips
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <Button
           variant={orderType === "market" ? "default" : "outline"}
           size="sm"
-          className="h-7 flex-1 text-xs"
+          className="h-6 flex-1 text-xs"
           onClick={() => setOrderType("market")}
         >
           Market
@@ -171,26 +171,26 @@ function OrderControls({ symbol }: OrderControlsProps) {
         <Button
           variant={orderType === "pending" ? "default" : "outline"}
           size="sm"
-          className="h-7 flex-1 text-xs"
+          className="h-6 flex-1 text-xs"
           onClick={() => setOrderType("pending")}
         >
           Pending
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Size (lots)</label>
-          <Input value={size} onChange={(e) => setSize(e.target.value)} className="mt-1 h-7 text-xs font-mono" />
+          <Input value={size} onChange={(e) => setSize(e.target.value)} className="mt-0.5 h-6 text-xs font-mono" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <div>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Stop Loss</label>
             <Input
               value={sl}
               onChange={(e) => setSl(e.target.value)}
               placeholder="Price"
-              className="mt-1 h-7 text-xs font-mono"
+              className="mt-0.5 h-6 text-xs font-mono"
             />
           </div>
           <div>
@@ -199,17 +199,17 @@ function OrderControls({ symbol }: OrderControlsProps) {
               value={tp}
               onChange={(e) => setTp(e.target.value)}
               placeholder="Price"
-              className="mt-1 h-7 text-xs font-mono"
+              className="mt-0.5 h-6 text-xs font-mono"
             />
           </div>
         </div>
       </div>
 
       <div>
-        <Button className="h-8 w-full text-xs" disabled={isPending}>
-          {isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : "Place Order"}
+        <Button className="h-7 w-full text-xs" disabled={isPending}>
+          {isPending ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" /> : "Place Order"}
         </Button>
-        {orderError && <div className="mt-2 text-xs text-red-600">{orderError}</div>}
+        {orderError && <div className="mt-1 text-xs text-red-600">{orderError}</div>}
       </div>
     </div>
   );
