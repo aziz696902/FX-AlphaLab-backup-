@@ -1,11 +1,12 @@
-"""Email service — sends transactional emails via Resend (https://resend.com)."""
+"""Email service — sends transactional emails via SMTP (Outlook / STARTTLS)."""
 
 from __future__ import annotations
 
 import logging
+import smtplib
 import threading
-
-import requests
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from src.shared.config import Config
 
@@ -289,32 +290,28 @@ def _build_reset_html(display_name: str, reset_url: str, email: str) -> str:
 
 
 def _send_transactional(to_email: str, subject: str, plain_text: str, html_body: str) -> None:
-    """Send a transactional email via Resend. Called from a background thread — never raises."""
-    if not Config.RESEND_API_KEY:
+    """Send a transactional email via SMTP. Called from a background thread — never raises."""
+    if not Config.SMTP_USER or not Config.SMTP_PASSWORD:
         logger.warning(
-            "RESEND_API_KEY not configured — skipping email to %s (subject: %s)", to_email, subject
+            "SMTP not configured — skipping email to %s (subject: %s)", to_email, subject
         )
         return
     try:
-        resp = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {Config.RESEND_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": Config.EMAIL_FROM,
-                "to": [to_email],
-                "subject": subject,
-                "text": plain_text,
-                "html": html_body,
-            },
-            timeout=10,
-        )
-        if resp.status_code in (200, 201):
-            logger.info("Email sent to %s (subject: %s)", to_email, subject)
-        else:
-            logger.error("Resend returned %s for %s: %s", resp.status_code, to_email, resp.text)
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = Config.EMAIL_FROM or Config.SMTP_USER
+        msg["To"] = to_email
+        msg.attach(MIMEText(plain_text, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        with smtplib.SMTP(Config.SMTP_HOST, Config.SMTP_PORT, timeout=15) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
+            server.sendmail(Config.SMTP_USER, to_email, msg.as_string())
+
+        logger.info("Email sent to %s (subject: %s)", to_email, subject)
     except Exception:
         logger.exception("Failed to send email to %s (subject: %s)", to_email, subject)
 
