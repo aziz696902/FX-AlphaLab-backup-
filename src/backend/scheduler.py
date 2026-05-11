@@ -15,8 +15,12 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from src.ingestion.orchestrator import CollectionOrchestrator
+from src.shared.config import Config
 from src.shared.config.sources import SourcesConfig
 from src.shared.utils import setup_logger
+
+# Sources whose Bronze/Silver output feeds the RAG index.
+_RAG_SOURCES = {"fed_documents", "ecb_documents", "boe_documents", "gdelt_gkg"}
 
 
 class SchedulerService:
@@ -126,6 +130,24 @@ class SchedulerService:
                 )
         except Exception as e:
             self.logger.error(f"Collection job exception for {source_id}: {e}", exc_info=True)
+            return
+
+        if source_id in _RAG_SOURCES and not result.error:
+            self._reindex_rag(source_id)
+
+    def _reindex_rag(self, trigger_source: str) -> None:
+        """Rebuild the RAG vector index after a relevant source collected new data."""
+        self.logger.info(f"RAG reindex triggered by {trigger_source}")
+        try:
+            from src.rag.indexer import build_index
+
+            stats = build_index(data_dir=Config.DATA_DIR, chroma_dir=Config.CHROMA_DIR)
+            self.logger.info(
+                f"RAG reindex complete: upserted={stats['upserted']} "
+                f"evicted={stats['evicted']} total={stats['total']}"
+            )
+        except Exception as e:
+            self.logger.error(f"RAG reindex failed: {e}", exc_info=True)
 
     def _run_inference_job(self, dry_run: bool) -> None:
         """Execute the daily inference job.
