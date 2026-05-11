@@ -19,6 +19,7 @@ from src.backend.email_service import (
     send_welcome_email,
 )
 from src.backend.schemas.auth import (
+    DevTierRequest,
     ForgotPasswordRequest,
     LoginRequest,
     RefreshRequest,
@@ -337,6 +338,26 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db)) -> None:
 
 @router.get("/me", response_model=UserResponse)
 def me(current_user: UserAccount = Depends(get_current_user)) -> UserResponse:
+    return UserResponse.model_validate(current_user)
+
+
+@router.patch("/users/me/tier", response_model=UserResponse)
+def dev_set_tier(
+    payload: DevTierRequest,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    """Dev-only: set tier without payment. Requires DEV_TIER_BYPASS=true in env."""
+    from src.shared.config import Config
+
+    if not Config.DEV_TIER_BYPASS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Dev tier bypass is not enabled on this server.",
+        )
+    current_user.tier = payload.tier
+    db.commit()
+    db.refresh(current_user)
     return UserResponse.model_validate(current_user)
 
 

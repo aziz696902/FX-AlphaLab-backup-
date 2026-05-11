@@ -94,3 +94,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in_seconds: int
     user: UserResponse
+
+
+class DevTierRequest(BaseModel):
+    tier: str = Field(pattern=r"^(free|pro|elite)$")

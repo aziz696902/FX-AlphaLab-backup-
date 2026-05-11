@@ -87,6 +87,9 @@ class Config:
     # Frontend URL (used in email links)
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+    # Dev-only: allows PATCH /auth/users/me/tier without payment. Never enable in production.
+    DEV_TIER_BYPASS: bool = os.getenv("DEV_TIER_BYPASS", "false").lower() == "true"
+
     @classmethod
     def validate(cls) -> None:
         """Validate required configuration."""
