@@ -823,7 +823,47 @@ export function RightPanel({
           )}
       </div>
 
-      {mt5Connected && <OrderControls symbol={activePair.symbol} liveTick={liveTick} />}
+      {mt5Connected ? (
+        <OrderControls symbol={activePair.symbol} liveTick={liveTick} />
+      ) : (
+        <div className="relative border-t border-border">
+          {/* Blurred preview of the trading controls */}
+          <div className="pointer-events-none select-none blur-[2px] opacity-40 p-3 space-y-3">
+            <div className="flex gap-2">
+              <div className="h-9 flex-1 rounded-md bg-[var(--buy)] flex flex-col items-center justify-center">
+                <span className="text-[10px] text-white font-normal">BUY</span>
+                <span className="font-mono text-xs text-white">—</span>
+              </div>
+              <div className="h-9 flex-1 rounded-md bg-[var(--sell)] flex flex-col items-center justify-center">
+                <span className="text-[10px] text-white font-normal">SELL</span>
+                <span className="font-mono text-xs text-white">—</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-7 flex-1 rounded-md border border-border bg-muted" />
+              <div className="h-7 flex-1 rounded-md border border-border bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-7 rounded-md border border-border bg-muted" />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="h-7 rounded-md border border-border bg-muted" />
+                <div className="h-7 rounded-md border border-border bg-muted" />
+              </div>
+            </div>
+            <div className="h-8 rounded-md border border-border bg-muted" />
+          </div>
+          {/* Lock overlay */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <p className="text-[11px] text-muted-foreground text-center px-4">
+              <a href="/profile" className="underline underline-offset-2 hover:text-foreground transition-colors">
+                Link MT5
+              </a>{" "}
+              to place trades
+            </p>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
