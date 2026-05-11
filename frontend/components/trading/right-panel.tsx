@@ -24,8 +24,6 @@ import {
   AgentSignalAPI,
   CoordinatorReportAPI,
   CoordinatorSignalAPI,
-  LiveAccount,
-  LivePosition,
   fetchNarrative,
   toActionLabel,
   toConfidenceLabel,
@@ -254,8 +252,6 @@ interface RightPanelProps {
   coordinatorSignals?: Map<string, CoordinatorSignalAPI>;
   agentSignals?: Map<string, AgentSignalAPI>;
   mt5Connected: boolean;
-  positions: LivePosition[];
-  account: LiveAccount | null;
 }
 
 export function RightPanel({
@@ -265,8 +261,6 @@ export function RightPanel({
   coordinatorSignals,
   agentSignals,
   mt5Connected,
-  positions,
-  account,
 }: RightPanelProps) {
   const { canAccess, open: openPaywall } = useUpgradeModal();
   const [analysisRevealed, setAnalysisRevealed] = useState(false);
@@ -333,7 +327,6 @@ export function RightPanel({
   const sentimentMock = mockAgentReport.sentiment[0];
 
   const reportHref = getReportPath(activePair.symbol);
-  const { closePosition } = useTrade();
 
   return (
     <aside
@@ -753,72 +746,6 @@ export function RightPanel({
         )}
         </div>
         )}
-          {mt5Connected ? (
-          <div className="border-t border-border p-3">
-            <div className="grid grid-cols-4 gap-2 text-[10px] mb-2">
-              <div>
-                <div className="text-muted-foreground">Balance</div>
-                <div className="font-mono text-xs">{account ? `$${account.balance.toFixed(2)}` : "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Equity</div>
-                <div className="font-mono text-xs">{account ? `$${account.equity.toFixed(2)}` : "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Free Margin</div>
-                <div className="font-mono text-xs">{account ? `$${account.marginFree.toFixed(2)}` : "—"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Margin Level</div>
-                <div className="font-mono text-xs">{account ? `${Math.round(account.marginLevel)}%` : "—"}</div>
-              </div>
-            </div>
-
-            <div className="text-[10px] text-muted-foreground">Positions</div>
-            {positions && positions.length > 0 ? (
-              <div className="mt-2">
-                <div className="grid grid-cols-6 gap-2 text-[10px] font-semibold">
-                  <div>Pair</div>
-                  <div>Side</div>
-                  <div>Lots</div>
-                  <div>Entry</div>
-                  <div>Current</div>
-                  <div className="text-right">P&L</div>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {positions.map((pos) => (
-                    <div key={pos.ticket} className="grid grid-cols-6 gap-2 items-center text-[10px]">
-                      <div>{pos.symbol}</div>
-                      <div>{pos.side}</div>
-                      <div>{pos.volume}</div>
-                      <div className="font-mono">{pos.openPrice.toFixed(5)}</div>
-                      <div className="font-mono">{pos.currentPrice.toFixed(5)}</div>
-                      <div className="flex items-center justify-end gap-2">
-                        <div className={pos.profit >= 0 ? "text-[10px] text-emerald-600 font-medium" : "text-[10px] text-red-600 font-medium"}>{pos.profit.toFixed(2)}</div>
-                        <button className="text-muted-foreground" onClick={async () => { await closePosition(pos.ticket); }}>
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="mt-2 text-muted-foreground text-[10px]">No open positions</div>
-            )}
-          </div>
-          ) : (
-          <div className="border-t border-border p-4 flex flex-col items-center gap-2 text-center">
-            <Link2 className="h-4 w-4 text-muted-foreground/50" />
-            <p className="text-[11px] text-muted-foreground">
-              Link your MT5 account in{" "}
-              <a href="/profile" className="underline underline-offset-2 hover:text-foreground transition-colors">
-                Profile
-              </a>{" "}
-              to see your balance, equity, and positions.
-            </p>
-          </div>
-          )}
       </div>
 
       {mt5Connected ? (

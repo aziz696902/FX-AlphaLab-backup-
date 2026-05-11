@@ -101,8 +101,6 @@ export default function TradingDashboard() {
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
           mt5Connected={mt5Status.connected}
-          positions={livePositions.positions}
-          account={livePositions.account}
         />
       </div>
     </div>
