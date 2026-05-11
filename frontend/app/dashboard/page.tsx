@@ -10,6 +10,7 @@ import { BottomPanel } from "@/components/trading/bottom-panel";
 import { Splitter } from "@/components/trading/splitter";
 import { useResizableLayout } from "@/hooks/use-resizable-layout";
 import { useInferenceData } from "@/hooks/use-inference-data";
+import { useMt5Status } from "@/hooks/use-mt5-status";
 import { UpgradeModalProvider } from "@/hooks/use-upgrade-modal";
 import { UpgradeModal } from "@/components/trading/upgrade-modal";
 
@@ -30,6 +31,7 @@ export default function TradingDashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { sizes, handleMouseDown, resetLayout } = useResizableLayout();
   const inference = useInferenceData();
+  const mt5Status = useMt5Status();
 
   if (!authed) return null;
 
@@ -53,6 +55,7 @@ export default function TradingDashboard() {
           width={sidebarCollapsed ? 40 : sizes.leftSidebar}
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
+          mt5Connected={mt5Status.connected}
         />
 
         {!sidebarCollapsed && (

@@ -11,12 +11,13 @@ export interface WatchlistTick extends LiveTick {
   pctChange: number | null;
 }
 
-export function useWatchlistTicks(): Map<string, WatchlistTick> {
+export function useWatchlistTicks(enabled = true): Map<string, WatchlistTick> {
   const [ticks, setTicks] = useState<Map<string, WatchlistTick>>(new Map());
   const dayOpenRef = useRef<Map<string, number>>(new Map());
 
-  // Fetch day-open prices once on mount
+  // Fetch day-open prices once on mount (only when MT5 is connected)
   useEffect(() => {
+    if (!enabled) return;
     async function fetchDayOpens() {
       const token = localStorage.getItem("access_token") ?? "";
       await Promise.allSettled(
@@ -38,8 +39,9 @@ export function useWatchlistTicks(): Map<string, WatchlistTick> {
     fetchDayOpens();
   }, []);
 
-  // WebSocket subscriptions for all 4 pairs
+  // WebSocket subscriptions for all 4 pairs (only when MT5 is connected)
   useEffect(() => {
+    if (!enabled) return;
     const sockets: WebSocket[] = [];
     const timers: ReturnType<typeof setTimeout>[] = [];
 
