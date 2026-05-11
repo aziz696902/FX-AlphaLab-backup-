@@ -123,6 +123,34 @@ class UserAccount(Base):
     __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
 
 
+class UserMT5Link(Base):
+    """User's linked MT5 account. One per user (UNIQUE on user_id).
+
+    Password is never stored — verified once via subprocess and discarded.
+    UNIQUE on (mt5_login, mt5_server) prevents two users linking the same account.
+    """
+
+    __tablename__ = "user_mt5_links"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    mt5_login = Column(Integer, nullable=False)
+    mt5_server = Column(String(100), nullable=False)
+    mt5_name = Column(String(255))
+    mt5_currency = Column(String(10))
+    mt5_leverage = Column(Integer)
+    mt5_account_type = Column(String(20))
+    connected_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    last_verified_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("mt5_login", "mt5_server", name="uq_mt5_login_server"),
+        Index("idx_mt5_links_user_id", "user_id"),
+    )
+
+
 class EmailVerificationToken(Base):
     __tablename__ = "email_verification_tokens"
 

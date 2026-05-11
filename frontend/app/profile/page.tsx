@@ -10,6 +10,11 @@ import {
   Activity,
   Zap,
   Crown,
+  Link2,
+  Link2Off,
+  Eye,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import { UpgradeModalProvider, useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { UpgradeModal } from "@/components/trading/upgrade-modal";
@@ -26,6 +31,33 @@ interface UserData {
   created_at: string;
   last_login_at: string | null;
 }
+
+interface MT5Account {
+  mt5_login: number;
+  mt5_server: string;
+  mt5_name: string | null;
+  mt5_currency: string | null;
+  mt5_leverage: number | null;
+  mt5_account_type: string | null;
+  connected_at: string;
+  last_verified_at: string;
+}
+
+interface MT5Status {
+  connected: boolean;
+  account: MT5Account | null;
+}
+
+const EXNESS_SERVERS = [
+  "Exness-MT5Trial16",
+  "Exness-MT5Real3",
+  "Exness-MT5Real6",
+  "Exness-MT5Real7",
+  "Exness-MT5Real8",
+  "Exness-MT5Real12",
+  "Exness-MT5Real14",
+  "Exness-MT5Real16",
+];
 
 function getInitials(name: string | null, email: string) {
   if (name) {
@@ -70,6 +102,7 @@ function ProfilePageInner() {
 
   const [user, setUser]       = useState<UserData | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
+  const [mt5Status, setMt5Status] = useState<MT5Status | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const [fullName, setFullName]   = useState("");
@@ -89,9 +122,10 @@ function ProfilePageInner() {
     async function load() {
       const token = localStorage.getItem("access_token");
       const h = { Authorization: `Bearer ${token}` };
-      const [meRes, accRes] = await Promise.allSettled([
+      const [meRes, accRes, mt5Res] = await Promise.allSettled([
         fetch(`${API_BASE}/auth/me`, { headers: h }),
         fetch(`${API_BASE}/trade/account`, { headers: h }),
+        fetch(`${API_BASE}/mt5/status`, { headers: h }),
       ]);
       if (meRes.status === "fulfilled" && meRes.value.ok) {
         const u: UserData = await meRes.value.json();
@@ -102,6 +136,10 @@ function ProfilePageInner() {
       if (accRes.status === "fulfilled" && accRes.value.ok) {
         const a = await accRes.value.json();
         setBalance(a.balance ?? null);
+      }
+      if (mt5Res.status === "fulfilled" && mt5Res.value.ok) {
+        const m: MT5Status = await mt5Res.value.json();
+        setMt5Status(m);
       }
       setMounted(true);
     }
@@ -340,10 +378,239 @@ function ProfilePageInner() {
               </div>
 
             </form>
+
+            {/* Section 04 — MT5 Account (outside the identity/security form) */}
+            <div className="max-w-xl mx-auto px-8 pb-10">
+              <MT5Section
+                status={mt5Status}
+                onStatusChange={setMt5Status}
+                showToast={showToast}
+              />
+            </div>
           </main>
         </div>
       </div>
     </>
+  );
+}
+
+function MT5Section({
+  status,
+  onStatusChange,
+  showToast,
+}: {
+  status: MT5Status | null;
+  onStatusChange: (s: MT5Status) => void;
+  showToast: (ok: boolean, msg: string) => void;
+}) {
+  const [mt5Login, setMt5Login] = useState("");
+  const [mt5Password, setMt5Password] = useState("");
+  const [mt5Server, setMt5Server] = useState(EXNESS_SERVERS[0]);
+  const [showPw, setShowPw] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  async function handleConnect(e: React.FormEvent) {
+    e.preventDefault();
+    if (!mt5Login || !mt5Password) {
+      showToast(false, "Please fill in all MT5 fields.");
+      return;
+    }
+    setConnecting(true);
+    try {
+      const res = await fetch(`${API_BASE}/mt5/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({
+          mt5_login: parseInt(mt5Login, 10),
+          mt5_password: mt5Password,
+          mt5_server: mt5Server,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(false, data.detail ?? "MT5 connection failed.");
+        return;
+      }
+      onStatusChange(data as MT5Status);
+      setMt5Password("");
+      showToast(true, "MT5 account connected successfully.");
+    } catch {
+      showToast(false, "Cannot reach server.");
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      const res = await fetch(`${API_BASE}/mt5/disconnect`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        showToast(false, data.detail ?? "Disconnect failed.");
+        return;
+      }
+      onStatusChange({ connected: false, account: null });
+      showToast(true, "MT5 account disconnected.");
+    } catch {
+      showToast(false, "Cannot reach server.");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  const acc = status?.account ?? null;
+
+  return (
+    <div className="anim-row mt-10" style={{ animationDelay: "220ms" }}>
+      {/* Section header */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-[10px] font-bold tracking-widest uppercase text-[#1F4AA8]">04</span>
+        <span className="text-[10px] font-bold tracking-widest uppercase text-[#6B7280]">MT5 Account</span>
+        <div className="flex-1 h-px bg-[#D1D5DB]" />
+        {status?.connected && (
+          <span className="flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-[#0D9488]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0D9488]" />
+            Connected
+          </span>
+        )}
+      </div>
+
+      {status?.connected && acc ? (
+        /* ── Connected state ── */
+        <div className="border border-[#D1D5DB] bg-white">
+          {/* Account metadata grid */}
+          <div className="grid grid-cols-2 divide-x divide-y divide-[#E3E6EA]">
+            {[
+              { label: "Account Number", value: String(acc.mt5_login), mono: true },
+              { label: "Server", value: acc.mt5_server, mono: true },
+              { label: "Account Holder", value: acc.mt5_name ?? "—", mono: false },
+              { label: "Currency", value: acc.mt5_currency ?? "—", mono: true },
+              { label: "Leverage", value: acc.mt5_leverage ? `1:${acc.mt5_leverage}` : "—", mono: true },
+              {
+                label: "Type",
+                value: acc.mt5_account_type
+                  ? acc.mt5_account_type.charAt(0).toUpperCase() + acc.mt5_account_type.slice(1)
+                  : "—",
+                mono: false,
+              },
+            ].map(({ label, value, mono }) => (
+              <div key={label} className="px-4 py-3">
+                <p className="text-[9px] tracking-widest uppercase text-[#9CA3AF] mb-1 font-medium">{label}</p>
+                <p className={`text-sm font-medium text-[#1A1D24] ${mono ? "font-mono" : ""}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Connected since */}
+          <div className="px-4 py-2.5 border-t border-[#E3E6EA] flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] text-[#9CA3AF]">
+              <Shield className="h-3 w-3" />
+              <span>Connected {new Date(acc.connected_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-[#DC2626] hover:text-[#b91c1c] disabled:opacity-40 transition-colors"
+            >
+              <Link2Off className="h-3 w-3" />
+              {disconnecting ? "Disconnecting…" : "Disconnect"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── Not connected state ── */
+        <form onSubmit={handleConnect} className="space-y-5">
+          <p className="text-xs text-[#6B7280]">
+            Link your MT5 account to verify your identity and unlock live account data.
+            Your password is verified once and never stored.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 group">
+              <label className="block text-[10px] font-bold tracking-widest uppercase text-[#9CA3AF] mb-1.5 group-focus-within:text-[#1F4AA8] transition-colors">
+                MT5 Login Number
+              </label>
+              <input
+                type="number"
+                value={mt5Login}
+                onChange={(e) => setMt5Login(e.target.value)}
+                placeholder="e.g. 12345678"
+                required
+                className="w-full h-10 bg-white border border-[#D1D5DB] px-3 text-sm text-[#1A1D24] placeholder:text-[#C4C9D4] focus:outline-none focus:border-[#1F4AA8] focus:ring-1 focus:ring-[#1F4AA8]/20 transition-all font-mono rounded-none"
+              />
+            </div>
+
+            <div className="col-span-2 group">
+              <label className="block text-[10px] font-bold tracking-widest uppercase text-[#9CA3AF] mb-1.5 group-focus-within:text-[#1F4AA8] transition-colors">
+                MT5 Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={mt5Password}
+                  onChange={(e) => setMt5Password(e.target.value)}
+                  placeholder="Your MT5 account password"
+                  required
+                  autoComplete="off"
+                  className="w-full h-10 bg-white border border-[#D1D5DB] px-3 pr-10 text-sm text-[#1A1D24] placeholder:text-[#C4C9D4] focus:outline-none focus:border-[#1F4AA8] focus:ring-1 focus:ring-[#1F4AA8]/20 transition-all font-mono rounded-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]"
+                  aria-label="Toggle password visibility"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-[#9CA3AF]">Never stored — used once to verify your account.</p>
+            </div>
+
+            <div className="col-span-2 group">
+              <label className="block text-[10px] font-bold tracking-widest uppercase text-[#9CA3AF] mb-1.5 group-focus-within:text-[#1F4AA8] transition-colors">
+                Broker Server
+              </label>
+              <select
+                value={mt5Server}
+                onChange={(e) => setMt5Server(e.target.value)}
+                className="w-full h-10 bg-white border border-[#D1D5DB] px-3 text-sm text-[#1A1D24] focus:outline-none focus:border-[#1F4AA8] focus:ring-1 focus:ring-[#1F4AA8]/20 transition-all font-mono rounded-none appearance-none cursor-pointer"
+              >
+                {EXNESS_SERVERS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={connecting}
+            className="w-full h-10 flex items-center justify-center gap-2 bg-[#1F4AA8] hover:bg-[#1a3e8f] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold tracking-widest uppercase transition-colors"
+          >
+            {connecting ? (
+              <>
+                <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Connecting…
+              </>
+            ) : (
+              <>
+                <Link2 className="h-3.5 w-3.5" />
+                Connect MT5 Account
+              </>
+            )}
+          </button>
+        </form>
+      )}
+    </div>
   );
 }
 

@@ -39,7 +39,7 @@ export interface GeopoliticalEvent {
   headline: string;
   countries: string[];
   relevance_to_fx: number; // 0-100
-  tone: "Positive" | "Negative" | "Neutral";
+  tone: "Positive" | "Negative" | "Neutral" | "Dovish" | "Hawkish";
   timestamp: string;
   source: "GDELT";
 }

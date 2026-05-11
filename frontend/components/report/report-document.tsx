@@ -49,7 +49,7 @@ function attachReportInteractions(container: HTMLElement) {
   const links = Array.from(container.querySelectorAll<HTMLAnchorElement>("[data-section-link]"));
   const sections = links
     .map((link) => container.querySelector<HTMLElement>(link.getAttribute("href") ?? ""))
-    .filter(Boolean);
+    .filter((s): s is HTMLElement => s !== null);
 
   const setActive = () => {
     let active = sections[0]?.id ?? "";
