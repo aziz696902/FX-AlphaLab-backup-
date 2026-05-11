@@ -77,9 +77,7 @@ class Config:
         "GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback"
     )
 
-    # SMTP email settings (Outlook: smtp-mail.outlook.com:587)
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp-mail.outlook.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    # SMTP email settings (Gmail)
     SMTP_USER: str | None = os.getenv("SMTP_USER")
     SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
