@@ -27,7 +27,7 @@ export default function PipelineHealth() {
         <h2 className="text-[#B3902E] font-mono text-xs uppercase tracking-widest mb-8">Pipeline Health</h2>
 
         {/* Status card */}
-        <div className="p-8 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519]">
+        <div className="p-8 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,15,20,0.45)] backdrop-blur-md">
           {/* Tiles grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-8">
             {healthTiles.map((tile) => (

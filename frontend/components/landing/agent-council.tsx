@@ -71,7 +71,7 @@ export default function AgentCouncil() {
             <div
               key={agent.name}
               onClick={() => setExpandedAgent(expandedAgent === agent.name ? null : agent.name)}
-              className="p-6 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] hover:border-[#294F69] transition-all cursor-pointer hover:bg-[rgba(41,79,105,0.05)]"
+              className="p-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,15,20,0.45)] backdrop-blur-md hover:border-[rgba(255,255,255,0.18)] hover:bg-[rgba(255,255,255,0.04)] transition-all cursor-pointer"
             >
               {/* Icon and name */}
               <div className="flex items-center gap-3 mb-4">
@@ -114,10 +114,8 @@ export default function AgentCouncil() {
 
         {/* Coordinator card */}
         <div
-          className="p-6 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] md:col-span-3"
-          style={{
-            borderTop: '2px solid #B3902E',
-          }}
+          className="p-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,15,20,0.55)] backdrop-blur-md md:col-span-3"
+          style={{ borderTop: '2px solid #B3902E' }}
         >
           {/* Header */}
           <div className="flex items-center gap-2 mb-6">

@@ -5,12 +5,12 @@ export default function Footer() {
         {/* Left */}
         <div className="text-center md:text-left">
           <p className="text-[#E8ECF0] font-semibold mb-1">FX-AlphaLab</p>
-          <p className="text-[#8F939C]">© 2024 · University Research Project · Not for commercial use</p>
+          <p className="text-[#8F939C]">© 2026 · FX-AlphaLab · Research-grade only</p>
         </div>
 
         {/* Right */}
         <p className="text-[#8F939C] text-center md:text-right font-mono">
-          v0.4 · CRISP-DM W4 · Multi-Agent FX Intelligence
+          Multi-Agent FX Intelligence
         </p>
       </div>
     </footer>

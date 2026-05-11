@@ -73,7 +73,7 @@ export default function Architecture() {
             <div key={tier.key}>
               <button
                 onClick={() => toggle(tier.key)}
-                className="w-full text-left p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#111519] hover:bg-[rgba(255,255,255,0.03)] transition-all"
+                className="w-full text-left p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,15,20,0.45)] backdrop-blur-md hover:border-[rgba(255,255,255,0.18)] hover:bg-[rgba(255,255,255,0.04)] transition-all"
                 style={{ borderLeft: `3px solid ${tier.color}` }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -87,7 +87,7 @@ export default function Architecture() {
               </button>
 
               {expanded === tier.key && (
-                <div className="mt-1 p-3 rounded bg-[#0E1418] border border-[rgba(143,147,156,0.10)]">
+                <div className="mt-1 p-3 rounded-lg bg-[rgba(10,15,20,0.6)] border border-[rgba(255,255,255,0.06)]">
                   {tier.details.map((d, i) => (
                     <p key={i} className="text-[#BBC0CB] text-xs mb-1 last:mb-0">· {d}</p>
                   ))}
@@ -120,7 +120,7 @@ export default function Architecture() {
         <div className="grid grid-cols-3 gap-3">
           {outputs.map((out, idx) => (
             <div key={out.label} className="flex items-stretch gap-3">
-              <div className="flex-1 p-4 rounded-lg border border-[rgba(143,147,156,0.15)] bg-[#0E1418]">
+              <div className="flex-1 p-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(10,15,20,0.45)] backdrop-blur-md">
                 <p className="text-[#B3902E] text-xs font-mono uppercase mb-1">{out.label}</p>
                 <p className="text-[#8F939C] text-xs">{out.description}</p>
               </div>
