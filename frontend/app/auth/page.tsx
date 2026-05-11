@@ -8,6 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TokenResponse {
   access_token: string;
@@ -228,12 +235,6 @@ export default function AuthPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end text-sm text-muted-foreground">
-                  <button type="button" className="text-primary hover:underline">
-                    Forgot password?
-                  </button>
-                </div>
-
                 {loginError && (
                   <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
                     {loginError}
@@ -353,19 +354,21 @@ export default function AuthPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label
-                    className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80"
-                    htmlFor="signup-role"
-                  >
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/90 dark:text-white/80">
                     Role (optional)
                   </label>
-                  <Input
-                    id="signup-role"
-                    placeholder="Portfolio manager"
-                    value={signupRole}
-                    onChange={(e) => setSignupRole(e.target.value)}
-                    className="h-11 rounded-lg bg-white/70 text-foreground placeholder:text-muted-foreground dark:bg-[#0c141c]/70 dark:text-white dark:placeholder:text-white/70"
-                  />
+                  <Select value={signupRole} onValueChange={setSignupRole}>
+                    <SelectTrigger className="h-11 w-full rounded-lg bg-white/70 text-foreground dark:bg-[#0c141c]/70 dark:text-white border-border">
+                      <SelectValue placeholder="Select your role…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Trader">Trader</SelectItem>
+                      <SelectItem value="Analyst">Analyst</SelectItem>
+                      <SelectItem value="Fund Manager">Fund Manager</SelectItem>
+                      <SelectItem value="Developer">Developer</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-start gap-2 text-xs text-muted-foreground/90 dark:text-white/80">
@@ -386,6 +389,33 @@ export default function AuthPage() {
 
                 <Button type="submit" className="h-11 w-full font-semibold" disabled={signupLoading}>
                   {signupLoading ? "Creating account…" : "Create account"}
+                </Button>
+
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/80">
+                  <span className="h-px w-full bg-border" />
+                  OR
+                  <span className="h-px w-full bg-border" />
+                </div>
+
+                {oauthError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {oauthError}
+                  </p>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { window.location.href = `${API_BASE_BACKEND}/auth/google`; }}
+                  className="h-11 w-full gap-2 rounded-lg border-border bg-white/80 text-foreground dark:bg-[#0c141c]/70 dark:text-white"
+                >
+                  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.8 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.2l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z" />
+                    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.2l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+                    <path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.3l-6.3-5.3C29.4 35.5 26.8 36 24 36c-5.4 0-9.8-3.3-11.3-8l-6.6 5.1C9.5 39.4 16.3 44 24 44z" />
+                    <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-1.1 3-3.3 5.3-6.3 6.8l6.3 5.3C38.9 36.7 44 31.1 44 24c0-1.3-.1-2.6-.4-3.9z" />
+                  </svg>
+                  Continue with Google
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground/90">

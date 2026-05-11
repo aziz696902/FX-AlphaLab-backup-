@@ -8,7 +8,11 @@ import {
   CheckCircle2,
   XCircle,
   Activity,
+  Zap,
+  Crown,
 } from "lucide-react";
+import { UpgradeModalProvider, useUpgradeModal } from "@/hooks/use-upgrade-modal";
+import { UpgradeModal } from "@/components/trading/upgrade-modal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -17,6 +21,7 @@ interface UserData {
   email: string;
   full_name: string | null;
   role: string;
+  tier: string;
   is_active: boolean;
   created_at: string;
   last_login_at: string | null;
@@ -52,6 +57,15 @@ const style = `
 `;
 
 export default function ProfilePage() {
+  return (
+    <UpgradeModalProvider>
+      <UpgradeModal />
+      <ProfilePageInner />
+    </UpgradeModalProvider>
+  );
+}
+
+function ProfilePageInner() {
   const router = useRouter();
 
   const [user, setUser]       = useState<UserData | null>(null);
@@ -77,7 +91,7 @@ export default function ProfilePage() {
       const h = { Authorization: `Bearer ${token}` };
       const [meRes, accRes] = await Promise.allSettled([
         fetch(`${API_BASE}/auth/me`, { headers: h }),
-        fetch(`${API_BASE}/trading/account`, { headers: h }),
+        fetch(`${API_BASE}/trade/account`, { headers: h }),
       ]);
       if (meRes.status === "fulfilled" && meRes.value.ok) {
         const u: UserData = await meRes.value.json();
@@ -150,7 +164,7 @@ export default function ProfilePage() {
         {/* ── Top bar ── */}
         <header className="h-12 bg-white border-b border-[#D1D5DB] flex items-center px-6 gap-4 shrink-0">
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/dashboard")}
             className="flex items-center gap-2 text-[#6B7280] hover:text-[#1A1D24] transition-colors text-xs tracking-widest uppercase font-medium"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -288,6 +302,9 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* Section 03 — Plan */}
+              <PlanSection tier={user?.tier ?? "free"} />
+
               {/* Toast */}
               {toast && (
                 <div
@@ -327,6 +344,107 @@ export default function ProfilePage() {
         </div>
       </div>
     </>
+  );
+}
+
+const TIER_META: Record<string, {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  dot: string;
+  Icon?: React.ElementType;
+  features: string[];
+  nextTier?: "pro" | "elite";
+  upgradeCta?: string;
+}> = {
+  free: {
+    label: "Free",
+    color: "#6B7280",
+    bg: "#F9FAFB",
+    border: "#D1D5DB",
+    dot: "#9CA3AF",
+    features: ["Live price feed", "Candlestick charts", "Basic dashboard"],
+    nextTier: "pro",
+    upgradeCta: "Upgrade to Pro",
+  },
+  pro: {
+    label: "Pro",
+    color: "#1D4ED8",
+    bg: "#EFF6FF",
+    border: "#BFDBFE",
+    dot: "#3B82F6",
+    Icon: Zap,
+    features: ["Everything in Free", "AI Signals — Technical & Macro", "Today's Call + Recommendation Details", "Multi-pair watchlist signals"],
+    nextTier: "elite",
+    upgradeCta: "Upgrade to Elite",
+  },
+  elite: {
+    label: "Elite",
+    color: "#92400E",
+    bg: "#FFFBEB",
+    border: "#FDE68A",
+    dot: "#F59E0B",
+    Icon: Crown,
+    features: ["Everything in Pro", "All 4 AI Agents — incl. Sentiment & Geo", "Agent Pulse panel", "Deep Dive Reports"],
+  },
+};
+
+function PlanSection({ tier }: { tier: string }) {
+  const meta = TIER_META[tier] ?? TIER_META.free;
+  const { open } = useUpgradeModal();
+  const Icon = meta.Icon;
+
+  return (
+    <div className="anim-row mt-10" style={{ animationDelay: "180ms" }}>
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-[10px] font-bold tracking-widest uppercase text-[#1F4AA8]">03</span>
+        <span className="text-[10px] font-bold tracking-widest uppercase text-[#6B7280]">Plan</span>
+        <div className="flex-1 h-px bg-[#D1D5DB]" />
+      </div>
+
+      <div
+        className="border px-5 py-4"
+        style={{ background: meta.bg, borderColor: meta.border }}
+      >
+        {/* Tier badge */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="h-4 w-4" style={{ color: meta.color }} />}
+            <span
+              className="text-xs font-bold tracking-widest uppercase"
+              style={{ color: meta.color }}
+            >
+              {meta.label}
+            </span>
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: meta.dot }}
+            />
+            <span className="text-[10px] text-[#9CA3AF] font-medium">Current plan</span>
+          </div>
+          {meta.nextTier && (
+            <button
+              type="button"
+              onClick={() => open(meta.nextTier!)}
+              className="text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 border border-[#1F4AA8] text-[#1F4AA8] hover:bg-[#1F4AA8] hover:text-white transition-colors"
+            >
+              {meta.upgradeCta}
+            </button>
+          )}
+        </div>
+
+        {/* Feature list */}
+        <ul className="space-y-1.5">
+          {meta.features.map((f) => (
+            <li key={f} className="flex items-center gap-2 text-xs text-[#374151]">
+              <span className="h-1 w-1 rounded-full shrink-0" style={{ background: meta.dot }} />
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
