@@ -64,7 +64,16 @@ def build_index(
     for row in gkg_rows:
         chunks.append(chunk_gdelt_row(row))
 
-    logger.info("Total chunks to index: %d", len(chunks))
+    # Deduplicate by ID (same doc can appear in multiple JSONL backfill files)
+    seen: set[str] = set()
+    unique_chunks: list[Chunk] = []
+    for c in chunks:
+        if c.id not in seen:
+            seen.add(c.id)
+            unique_chunks.append(c)
+    chunks = unique_chunks
+
+    logger.info("Total chunks to index: %d (after dedup)", len(chunks))
 
     # --- Embed and upsert in batches ---
     upserted = 0

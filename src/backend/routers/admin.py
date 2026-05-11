@@ -143,27 +143,38 @@ def trigger_inference(
 
 class ReindexResponse(BaseModel):
     status: str
-    upserted: int
-    evicted: int
-    total: int
+    message: str
 
 
 @router.post("/rag/reindex", response_model=ReindexResponse)
 def reindex_rag(
+    days: int = 30,
     _admin: UserAccount = Depends(_require_admin),
 ) -> ReindexResponse:
-    """Rebuild the RAG vector index from the last 30 days of CB documents and GDELT GKG data.
+    """Rebuild the RAG vector index in a background thread.
 
-    Runs synchronously — may take several minutes depending on corpus size.
+    Args:
+        days: Rolling window size in days (default 30). Pass ?days=5 for a quick test.
+
+    Returns immediately. Check server logs for progress and completion stats.
     """
-    try:
-        from src.rag.indexer import build_index
 
-        stats = build_index(data_dir=Config.DATA_DIR, chroma_dir=Config.CHROMA_DIR)
-        return ReindexResponse(status="ok", **stats)
-    except Exception as exc:
-        logger.exception("RAG reindex failed")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Reindex failed: {exc}",
-        ) from exc
+    def _run() -> None:
+        try:
+            from src.rag.indexer import build_index
+
+            stats = build_index(data_dir=Config.DATA_DIR, chroma_dir=Config.CHROMA_DIR, days=days)
+            logger.info(
+                "RAG reindex complete: upserted=%d evicted=%d total=%d",
+                stats["upserted"],
+                stats["evicted"],
+                stats["total"],
+            )
+        except Exception:
+            logger.exception("RAG reindex failed")
+
+    threading.Thread(target=_run, daemon=True, name="admin-rag-reindex").start()
+    return ReindexResponse(
+        status="started",
+        message=f"RAG reindex (days={days}) running in background. Check server logs for progress.",
+    )

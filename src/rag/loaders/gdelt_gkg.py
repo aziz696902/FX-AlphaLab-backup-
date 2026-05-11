@@ -73,6 +73,19 @@ def load_gdelt_gkg(data_dir: Path, cutoff_date: date) -> list[dict]:
     return docs
 
 
+def _join_field(value, max_items: int) -> str:
+    """Safely convert a list/array/str field to a comma-separated preview string."""
+    if value is None:
+        return ""
+    try:
+        # Handles numpy arrays, pandas arrays, plain lists
+        items = list(value)
+    except TypeError:
+        items = [str(value)]
+    items = [str(i) for i in items if i is not None and str(i).strip()]
+    return ", ".join(items[:max_items])
+
+
 def _format_row(row: pd.Series) -> str:
     parts: list[str] = []
     date_str = row["timestamp_utc"].strftime("%Y-%m-%d")
@@ -85,24 +98,18 @@ def _format_row(row: pd.Series) -> str:
         parts[0] += f" | source={domain}"
 
     themes = row.get("themes")
-    if themes and isinstance(themes, (list, str)):
-        theme_list = themes if isinstance(themes, list) else str(themes).split(";")
-        preview = ", ".join(str(t) for t in theme_list[:5] if t)
-        if preview:
-            parts.append(f"Themes: {preview}")
+    theme_preview = _join_field(themes, 5)
+    if theme_preview:
+        parts.append(f"Themes: {theme_preview}")
 
     locations = row.get("locations")
-    if locations and isinstance(locations, (list, str)):
-        loc_list = locations if isinstance(locations, list) else str(locations).split(";")
-        preview = ", ".join(str(loc) for loc in loc_list[:5] if loc)
-        if preview:
-            parts.append(f"Locations: {preview}")
+    loc_preview = _join_field(locations, 5)
+    if loc_preview:
+        parts.append(f"Locations: {loc_preview}")
 
     orgs = row.get("organizations")
-    if orgs and isinstance(orgs, (list, str)):
-        org_list = orgs if isinstance(orgs, list) else str(orgs).split(";")
-        preview = ", ".join(str(o) for o in org_list[:3] if o)
-        if preview:
-            parts.append(f"Organizations: {preview}")
+    org_preview = _join_field(orgs, 3)
+    if org_preview:
+        parts.append(f"Organizations: {org_preview}")
 
     return " | ".join(parts)

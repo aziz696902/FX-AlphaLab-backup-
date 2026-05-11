@@ -6,13 +6,16 @@ asyncio.to_thread() to avoid blocking the event loop.
 
 from __future__ import annotations
 
+import time
+
 from google import genai
 from google.genai import types
 
 from src.shared.config import Config
 
-_MODEL = "text-embedding-004"
+_MODEL = "gemini-embedding-001"
 _BATCH_SIZE = 100  # API limit per call
+_INTER_BATCH_DELAY = 2.0  # seconds between batches — stay under 100 req/min free tier
 
 
 def _client() -> genai.Client:
@@ -39,10 +42,13 @@ def _embed_batched(texts: list[str], task_type: str) -> list[list[float]]:
     result: list[list[float]] = []
     for i in range(0, len(texts), _BATCH_SIZE):
         batch = texts[i : i + _BATCH_SIZE]
+        # SDK has built-in tenacity retry for 429s — no need to wrap again
         response = client.models.embed_content(
             model=_MODEL,
             contents=batch,
             config=types.EmbedContentConfig(task_type=task_type),
         )
         result.extend(emb.values for emb in response.embeddings)
+        if i + _BATCH_SIZE < len(texts):
+            time.sleep(_INTER_BATCH_DELAY)
     return result
