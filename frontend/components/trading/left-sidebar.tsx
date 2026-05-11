@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ChevronDown, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Link2 } from "lucide-react";
+import { Search, ChevronDown, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,6 @@ interface LeftSidebarProps {
   width?: number;
   coordinatorSignals: Map<string, CoordinatorSignalAPI>;
   agentSignals: Map<string, AgentSignalAPI>;
-  mt5Connected: boolean;
 }
 
 export function LeftSidebar({
@@ -69,10 +68,9 @@ export function LeftSidebar({
   width = 260,
   coordinatorSignals,
   agentSignals,
-  mt5Connected,
 }: LeftSidebarProps) {
   const { canAccess, open: openPaywall } = useUpgradeModal();
-  const watchlistTicks = useWatchlistTicks(mt5Connected);
+  const watchlistTicks = useWatchlistTicks();
 
   const hasData = coordinatorSignals.size > 0;
   // Pick a representative pair for Agent Pulse (first available, or EURUSD)
@@ -144,7 +142,6 @@ export function LeftSidebar({
                 const pct = tick?.pctChange ?? null;
                 const isUp = pct !== null && pct >= 0;
                 const fmt5 = (n: number) => n.toFixed(pair.includes("JPY") ? 3 : 5);
-                const locked = !mt5Connected;
 
                 return (
                   <tr
@@ -161,24 +158,19 @@ export function LeftSidebar({
                     </td>
                     {/* Bid */}
                     <td className="px-2 py-2 text-right font-mono text-[10px]">
-                      {locked ? <span className="text-muted-foreground/30">—</span>
-                        : tick ? fmt5(tick.bid) : <span className="text-muted-foreground/40">—</span>}
+                      {tick ? fmt5(tick.bid) : <span className="text-muted-foreground/40">—</span>}
                     </td>
                     {/* Ask */}
                     <td className="px-2 py-2 text-right font-mono text-[10px] text-muted-foreground">
-                      {locked ? <span className="opacity-30">—</span>
-                        : tick ? fmt5(tick.ask) : <span className="opacity-40">—</span>}
+                      {tick ? fmt5(tick.ask) : <span className="opacity-40">—</span>}
                     </td>
                     {/* Spread */}
                     <td className="px-2 py-2 text-right font-mono text-[10px] text-muted-foreground">
-                      {locked ? <span className="opacity-30">—</span>
-                        : tick ? tick.spreadPips : <span className="opacity-40">—</span>}
+                      {tick ? tick.spreadPips : <span className="opacity-40">—</span>}
                     </td>
                     {/* %Change */}
                     <td className="px-2 py-2 text-right">
-                      {locked ? (
-                        <span className="text-muted-foreground/30 text-[10px]">—</span>
-                      ) : pct !== null ? (
+                      {pct !== null ? (
                         <span className={cn(
                           "inline-flex items-center gap-0.5 font-mono text-[10px] font-semibold",
                           isUp ? "text-[var(--long)]" : "text-[var(--short)]"
@@ -198,15 +190,6 @@ export function LeftSidebar({
               })}
             </tbody>
           </table>
-          {/* MT5 not linked — prompt */}
-          {!mt5Connected && (
-            <div className="px-3 py-2 border-t border-border/50 flex items-center gap-1.5">
-              <Link2 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-              <span className="text-[10px] text-muted-foreground/50">
-                Link MT5 in profile for live prices
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Agent Pulse Section */}

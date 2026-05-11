@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Link2, X } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -185,9 +185,10 @@ function HistoryRow({ trade }: { trade: HistoricalTrade }) {
 
 interface BottomPanelProps {
   height?: number;
+  mt5Connected: boolean;
 }
 
-export function BottomPanel({ height = 190 }: BottomPanelProps) {
+export function BottomPanel({ height = 190, mt5Connected }: BottomPanelProps) {
   const [activeTab, setActiveTab] = useState("open");
   const { positions, pendingOrders, history, loading, refresh } = usePositions();
 
@@ -216,6 +217,18 @@ export function BottomPanel({ height = 190 }: BottomPanelProps) {
       className="bg-card border-t border-border shrink-0 flex flex-col shadow-[var(--card-shadow)]"
       style={{ height: `${height}px` }}
     >
+      {!mt5Connected ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
+          <Link2 className="h-4 w-4 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground">
+            Link your MT5 account in{" "}
+            <a href="/profile" className="underline underline-offset-2 hover:text-foreground transition-colors">
+              Profile
+            </a>{" "}
+            to view open positions, pending orders, and trade history.
+          </p>
+        </div>
+      ) : (
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="border-b border-border px-3">
           <TabsList className="h-9 bg-transparent p-0 gap-4">
@@ -336,6 +349,7 @@ export function BottomPanel({ height = 190 }: BottomPanelProps) {
           )}
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }

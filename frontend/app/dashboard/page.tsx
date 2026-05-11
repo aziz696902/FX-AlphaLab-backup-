@@ -55,7 +55,6 @@ export default function TradingDashboard() {
           width={sidebarCollapsed ? 40 : sizes.leftSidebar}
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
-          mt5Connected={mt5Status.connected}
         />
 
         {!sidebarCollapsed && (
@@ -78,7 +77,7 @@ export default function TradingDashboard() {
             onMouseDown={(e) => handleMouseDown("bottom", e)}
           />
 
-          <BottomPanel height={sizes.bottomPanel} />
+          <BottomPanel height={sizes.bottomPanel} mt5Connected={mt5Status.connected} />
         </div>
 
         <Splitter
@@ -93,6 +92,7 @@ export default function TradingDashboard() {
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
           liveTick={liveTick}
+          mt5Connected={mt5Status.connected}
         />
       </div>
     </div>

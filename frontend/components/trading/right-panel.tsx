@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FileText, Maximize2, Sparkles, X } from "lucide-react";
+import { FileText, Link2, Maximize2, Sparkles, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -252,6 +252,7 @@ interface RightPanelProps {
   coordinatorSignals?: Map<string, CoordinatorSignalAPI>;
   agentSignals?: Map<string, AgentSignalAPI>;
   liveTick?: LiveTick | null;
+  mt5Connected: boolean;
 }
 
 export function RightPanel({
@@ -261,6 +262,7 @@ export function RightPanel({
   coordinatorSignals,
   agentSignals,
   liveTick,
+  mt5Connected,
 }: RightPanelProps) {
   const { canAccess, open: openPaywall } = useUpgradeModal();
   const [analysisRevealed, setAnalysisRevealed] = useState(false);
@@ -753,6 +755,7 @@ export function RightPanel({
         )}
         </div>
         )}
+          {mt5Connected ? (
           <div className="border-t border-border p-3">
             <div className="grid grid-cols-4 gap-2 text-[10px] mb-2">
               <div>
@@ -806,9 +809,21 @@ export function RightPanel({
               <div className="mt-2 text-muted-foreground text-[10px]">No open positions</div>
             )}
           </div>
+          ) : (
+          <div className="border-t border-border p-4 flex flex-col items-center gap-2 text-center">
+            <Link2 className="h-4 w-4 text-muted-foreground/50" />
+            <p className="text-[11px] text-muted-foreground">
+              Link your MT5 account in{" "}
+              <a href="/profile" className="underline underline-offset-2 hover:text-foreground transition-colors">
+                Profile
+              </a>{" "}
+              to see your balance, equity, and positions.
+            </p>
+          </div>
+          )}
       </div>
 
-      <OrderControls symbol={activePair.symbol} liveTick={liveTick} />
+      {mt5Connected && <OrderControls symbol={activePair.symbol} liveTick={liveTick} />}
     </aside>
   );
 }
