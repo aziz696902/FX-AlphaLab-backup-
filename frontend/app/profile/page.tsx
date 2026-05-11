@@ -250,7 +250,8 @@ function ProfilePageInner() {
           {/* Stats */}
           <div className="flex flex-col px-4 py-4 gap-0">
 
-            {/* Balance */}
+            {/* Balance — only when MT5 is linked */}
+            {mt5Status?.connected && (
             <div className="pb-4 border-b border-border mb-4">
               <p className="text-[10px] tracking-widest uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5 font-medium">
                 <Activity className="h-3 w-3" />
@@ -261,9 +262,10 @@ function ProfilePageInner() {
                   ${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               ) : (
-                <p className="font-mono text-xs text-muted-foreground">Not connected</p>
+                <p className="font-mono text-xs text-muted-foreground animate-pulse">Loading…</p>
               )}
             </div>
+            )}
 
             {/* Meta */}
             {[
@@ -415,6 +417,7 @@ function ProfilePageInner() {
                   >
                     <MT5Section
                       status={mt5Status}
+                      balance={balance}
                       onStatusChange={setMt5Status}
                       showToast={showToast}
                     />
@@ -462,10 +465,12 @@ function SectionCard({
 /* ── MT5 section (no wrapper card — lives inside SectionCard) ── */
 function MT5Section({
   status,
+  balance,
   onStatusChange,
   showToast,
 }: {
   status: MT5Status | null;
+  balance: number | null;
   onStatusChange: (s: MT5Status) => void;
   showToast: (ok: boolean, msg: string) => void;
 }) {
@@ -540,6 +545,9 @@ function MT5Section({
             { label: "Leverage", value: acc.mt5_leverage ? `1:${acc.mt5_leverage}` : "—",             mono: true },
             { label: "Type",     value: acc.mt5_account_type
                 ? acc.mt5_account_type.charAt(0).toUpperCase() + acc.mt5_account_type.slice(1) : "—", mono: false },
+            { label: "Balance",  value: balance !== null
+                ? `${acc.mt5_currency ?? "$"}${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "—",                                                                                 mono: true },
           ].map(({ label, value, mono }) => (
             <div key={label} className="bg-background rounded-md px-3 py-2.5 border border-border">
               <p className="text-[9px] tracking-wider uppercase text-muted-foreground mb-0.5 font-medium">{label}</p>
