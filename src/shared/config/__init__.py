@@ -84,6 +84,9 @@ class Config:
     SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "FX-AlphaLab")
 
+    # Frontend URL (used in email links)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
     @classmethod
     def validate(cls) -> None:
         """Validate required configuration."""

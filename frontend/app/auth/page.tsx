@@ -142,8 +142,7 @@ export default function AuthPage() {
         }
         return;
       }
-      storeTokens(data as TokenResponse);
-      router.push("/dashboard");
+      router.push(`/auth/verify-pending?email=${encodeURIComponent(signupEmail)}`);
     } catch {
       setSignupError("Cannot reach server. Is the backend running?");
     } finally {
@@ -233,6 +232,16 @@ export default function AuthPage() {
                       {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => router.push("/auth/forgot-password")}
+                  >
+                    Forgot password?
+                  </button>
                 </div>
 
                 {loginError && (

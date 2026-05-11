@@ -111,14 +111,30 @@ class UserAccount(Base):
     email = Column(String(255), nullable=False, unique=True, index=True)
     full_name = Column(String(120))
     role = Column(String(50), nullable=False, default="trader")
+    tier = Column(String(50), nullable=False, default="free")
     password_hash = Column(String(255), nullable=True)
     google_id = Column(String(255), unique=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    email_verified_at = Column(TIMESTAMP, nullable=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP, nullable=False, server_default=func.now(), onupdate=func.now())
     last_login_at = Column(TIMESTAMP)
 
     __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
+
+
+class EmailVerificationToken(Base):
+    __tablename__ = "email_verification_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    type = Column(String(20), nullable=False)
+    expires_at = Column(TIMESTAMP, nullable=False)
+    used_at = Column(TIMESTAMP, nullable=True)
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+
+    __table_args__ = (Index("idx_evt_user_type", "user_id", "type"),)
 
 
 class RefreshToken(Base):

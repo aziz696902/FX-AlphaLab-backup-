@@ -23,7 +23,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
-_FRONTEND_URL = "http://localhost:3000"
 
 
 @router.get("/google")
@@ -55,7 +54,7 @@ def google_callback(
 ) -> RedirectResponse:
     """Exchange Google auth code for app JWT tokens, find or create the user."""
     if error or not code:
-        return RedirectResponse(url=f"{_FRONTEND_URL}/auth?error=google_denied")
+        return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth?error=google_denied")
 
     # Exchange authorization code for Google access token
     token_resp = http_requests.post(
@@ -70,7 +69,7 @@ def google_callback(
         timeout=10,
     )
     if not token_resp.ok:
-        return RedirectResponse(url=f"{_FRONTEND_URL}/auth?error=google_token_failed")
+        return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth?error=google_token_failed")
 
     google_access_token = token_resp.json().get("access_token")
 
@@ -81,7 +80,7 @@ def google_callback(
         timeout=10,
     )
     if not userinfo_resp.ok:
-        return RedirectResponse(url=f"{_FRONTEND_URL}/auth?error=google_userinfo_failed")
+        return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth?error=google_userinfo_failed")
 
     userinfo = userinfo_resp.json()
     google_id: str = userinfo.get("id", "")
@@ -89,12 +88,13 @@ def google_callback(
     full_name: str | None = userinfo.get("name")
 
     if not email:
-        return RedirectResponse(url=f"{_FRONTEND_URL}/auth?error=google_no_email")
+        return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth?error=google_no_email")
 
     # Find or create user
     user = db.execute(select(UserAccount).where(UserAccount.email == email)).scalar_one_or_none()
     is_new = user is None
 
+    now = datetime.utcnow()
     if user is None:
         user = UserAccount(
             email=email,
@@ -103,6 +103,7 @@ def google_callback(
             google_id=google_id,
             password_hash=None,
             is_active=True,
+            email_verified_at=now,
         )
         db.add(user)
         db.flush()
@@ -110,7 +111,9 @@ def google_callback(
         # Link Google identity to an existing email/password account
         if user.google_id is None:
             user.google_id = google_id
-        user.last_login_at = datetime.utcnow()
+        if user.email_verified_at is None:
+            user.email_verified_at = now
+        user.last_login_at = now
 
     # Issue app JWT tokens
     access_token, expires_in = create_access_token(user)
@@ -136,7 +139,11 @@ def google_callback(
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
+            "tier": user.tier,
             "is_active": user.is_active,
+            "email_verified_at": (
+                user.email_verified_at.isoformat() if user.email_verified_at else None
+            ),
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
         },
@@ -151,4 +158,4 @@ def google_callback(
             "user": user_json,
         }
     )
-    return RedirectResponse(url=f"{_FRONTEND_URL}/auth/callback?{redirect_params}")
+    return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth/callback?{redirect_params}")
