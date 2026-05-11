@@ -6,16 +6,20 @@ asyncio.to_thread() to avoid blocking the event loop.
 
 from __future__ import annotations
 
+import logging
 import time
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ClientError
 
 from src.shared.config import Config
 
+logger = logging.getLogger(__name__)
+
 _MODEL = "gemini-embedding-001"
-_BATCH_SIZE = 100  # API limit per call
-_INTER_BATCH_DELAY = 2.0  # seconds between batches — stay under 100 req/min free tier
+_BATCH_SIZE = 100  # texts per API call
+_RATE_LIMIT_WAIT = 62  # seconds to sleep on 429 before retrying
 
 
 def _client() -> genai.Client:
@@ -40,15 +44,30 @@ def _embed_batched(texts: list[str], task_type: str) -> list[list[float]]:
         return []
     client = _client()
     result: list[list[float]] = []
-    for i in range(0, len(texts), _BATCH_SIZE):
+    i = 0
+    just_waited = False
+    while i < len(texts):
         batch = texts[i : i + _BATCH_SIZE]
-        # SDK has built-in tenacity retry for 429s — no need to wrap again
-        response = client.models.embed_content(
-            model=_MODEL,
-            contents=batch,
-            config=types.EmbedContentConfig(task_type=task_type),
-        )
-        result.extend(emb.values for emb in response.embeddings)
-        if i + _BATCH_SIZE < len(texts):
-            time.sleep(_INTER_BATCH_DELAY)
+        try:
+            response = client.models.embed_content(
+                model=_MODEL,
+                contents=batch,
+                config=types.EmbedContentConfig(task_type=task_type),
+            )
+            result.extend(emb.values for emb in response.embeddings)
+            i += _BATCH_SIZE
+            just_waited = False
+        except ClientError as exc:
+            if exc.code == 429:
+                if just_waited:
+                    # Still 429 after a full wait → daily quota exhausted, no point retrying
+                    raise RuntimeError(
+                        "Daily embedding quota exhausted. Retry tomorrow or switch API key."
+                    ) from exc
+                logger.warning("Embed rate limit hit — sleeping %ds before retry", _RATE_LIMIT_WAIT)
+                time.sleep(_RATE_LIMIT_WAIT)
+                just_waited = True
+                # retry same batch — do NOT advance i
+            else:
+                raise
     return result
