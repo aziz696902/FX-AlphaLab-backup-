@@ -822,7 +822,7 @@ export function RightPanel({
       </div>
 
       {mt5Connected ? (
-        <OrderControls symbol={activePair.symbol} />
+        <OrderControls symbol={symbol} />
       ) : (
         <div className="relative border-t border-border">
           {/* Blurred preview of the trading controls */}
