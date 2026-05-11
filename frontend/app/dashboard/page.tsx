@@ -10,6 +10,8 @@ import { BottomPanel } from "@/components/trading/bottom-panel";
 import { Splitter } from "@/components/trading/splitter";
 import { useResizableLayout } from "@/hooks/use-resizable-layout";
 import { useInferenceData } from "@/hooks/use-inference-data";
+import { UpgradeModalProvider } from "@/hooks/use-upgrade-modal";
+import { UpgradeModal } from "@/components/trading/upgrade-modal";
 
 export default function TradingDashboard() {
   const router = useRouter();
@@ -32,6 +34,8 @@ export default function TradingDashboard() {
   if (!authed) return null;
 
   return (
+    <UpgradeModalProvider>
+    <UpgradeModal />
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       <TopBar
         activeInstrument={activeInstrument}
@@ -89,5 +93,6 @@ export default function TradingDashboard() {
         />
       </div>
     </div>
+    </UpgradeModalProvider>
   );
 }

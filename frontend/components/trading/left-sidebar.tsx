@@ -4,6 +4,7 @@ import { Search, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import {
   AgentSignalAPI,
   CoordinatorSignalAPI,
@@ -82,6 +83,7 @@ export function LeftSidebar({
     );
   }
 
+  const { canAccess, open: openPaywall } = useUpgradeModal();
   const hasData = coordinatorSignals.size > 0;
 
   // Pick a representative pair for Agent Pulse (first available, or EURUSD)
@@ -197,40 +199,61 @@ export function LeftSidebar({
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Agent Pulse
           </h3>
-          <div className="space-y-2.5">
-            {AGENT_PULSE_DEFS.map((def) => {
-              const agentSig = agentSignals.get("EURUSD") ?? pulseSignal;
-              const driver = def.driver(agentSig);
-              const isDataReady = hasData && agentSig !== undefined;
-              const status = !isDataReady ? "WARN" : "OK";
 
-              return (
-                <div key={def.name} className="bg-muted/50 rounded px-2 py-1.5">
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <span className="font-medium">{def.name}</span>
-                    <span className="text-muted-foreground">·</span>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "text-[9px] px-1 py-0 h-3.5 font-medium",
-                        status === "OK" && "bg-[var(--long)]/15 text-[var(--long)]",
-                        status === "WARN" && "bg-amber-500/15 text-amber-600"
-                      )}
-                    >
-                      {status}
-                    </Badge>
+          {canAccess("elite") ? (
+            <div className="space-y-2.5">
+              {AGENT_PULSE_DEFS.map((def) => {
+                const agentSig = agentSignals.get("EURUSD") ?? pulseSignal;
+                const driver = def.driver(agentSig);
+                const isDataReady = hasData && agentSig !== undefined;
+                const status = !isDataReady ? "WARN" : "OK";
+
+                return (
+                  <div key={def.name} className="bg-muted/50 rounded px-2 py-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="font-medium">{def.name}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[9px] px-1 py-0 h-3.5 font-medium",
+                          status === "OK" && "bg-[var(--long)]/15 text-[var(--long)]",
+                          status === "WARN" && "bg-amber-500/15 text-amber-600"
+                        )}
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                      <span>Driver:</span>
+                      <span className="text-foreground font-medium truncate max-w-[100px]">{driver}</span>
+                      <span className="mx-0.5">|</span>
+                      <span>Impact:</span>
+                      <span className="text-foreground font-medium">{def.impact}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                    <span>Driver:</span>
-                    <span className="text-foreground font-medium truncate max-w-[100px]">{driver}</span>
-                    <span className="mx-0.5">|</span>
-                    <span>Impact:</span>
-                    <span className="text-foreground font-medium">{def.impact}</span>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+              <div className="divide-y divide-border/40">
+                {AGENT_PULSE_DEFS.map((def) => (
+                  <div key={def.name} className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">{def.name}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground/35 tracking-widest">— · —</span>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+              <button
+                onClick={() => openPaywall("elite")}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-[11px] font-semibold text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 transition-colors border-t border-amber-500/20"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2.7-2h8.6l1-5.4-3.1 3-2.2-3.8-2.2 3.8-3.1-3L7.7 14z"/></svg>
+                Elite · Unlock Agent Pulse
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </aside>
