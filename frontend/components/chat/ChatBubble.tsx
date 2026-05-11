@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Bot, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useChat } from "@/hooks/useChat";
@@ -36,13 +36,7 @@ export function ChatBubble() {
           "transition-transform active:scale-95",
         )}
       >
-        {open ? (
-          <X size={22} />
-        ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
+        {open ? <X size={22} /> : <Bot size={22} />}
         {/* Unread indicator */}
         {!open && chat.messages.length > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-destructive border-2 border-background" />

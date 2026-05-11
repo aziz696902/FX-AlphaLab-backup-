@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/chat";
 
@@ -17,9 +18,7 @@ export function ChatMessageItem({ message, isStreaming }: ChatMessageItemProps) 
     <div className={cn("flex gap-2.5 mb-4", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <div className="shrink-0 mt-0.5 w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-primary">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <Bot size={14} className="text-primary" />
         </div>
       )}
 

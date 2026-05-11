@@ -54,6 +54,9 @@ export function useLiveCandles(
               spreadPips: Number(data.spread_pips ?? data.spreadPips ?? 0),
               timeMs: Number(data.time_ms ?? data.timeMs ?? Date.now()),
             };
+            // Broadcast on the window so any component can subscribe without
+            // lifting state up through the page — avoids full-page re-renders.
+            window.dispatchEvent(new CustomEvent(`fx:tick:${tick.pair}`, { detail: tick }));
             callbacksRef.current.onTick?.(tick);
           } else if (type === "status") {
             const state = String(data.state ?? "offline");

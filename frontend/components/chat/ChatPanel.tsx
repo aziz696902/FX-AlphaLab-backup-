@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
-import { RotateCcw, Send, Square, X } from "lucide-react";
+import { Bot, RotateCcw, Send, Square, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { UseChatReturn } from "@/hooks/useChat";
@@ -47,9 +47,7 @@ export function ChatPanel({ messages, streaming, send, stop, clear, onClose }: C
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-primary">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <Bot size={14} className="text-primary" />
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground leading-none">Alpha Analyst</p>
@@ -85,9 +83,7 @@ export function ChatPanel({ messages, streaming, send, stop, clear, onClose }: C
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 pb-8">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-primary">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <Bot size={22} className="text-primary" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Ask me anything</p>

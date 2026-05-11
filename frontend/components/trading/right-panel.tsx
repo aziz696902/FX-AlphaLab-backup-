@@ -26,13 +26,13 @@ import {
   CoordinatorSignalAPI,
   LiveAccount,
   LivePosition,
-  LiveTick,
   fetchNarrative,
   toActionLabel,
   toConfidenceLabel,
 } from "@/lib/api";
 import { toast } from "sonner";
 import { useTrade } from "@/hooks/use-trade";
+import { useLiveTick } from "@/hooks/use-live-tick";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -102,10 +102,10 @@ function buildPairCalls(
 
 interface OrderControlsProps {
   symbol: string;
-  liveTick?: LiveTick | null;
 }
 
-function OrderControls({ symbol, liveTick }: OrderControlsProps) {
+function OrderControls({ symbol }: OrderControlsProps) {
+  const liveTick = useLiveTick(symbol);
   const [orderType, setOrderType] = useState<"market" | "pending">("market");
   const [size, setSize] = useState("0.10");
   const [sl, setSl] = useState("");
@@ -253,7 +253,6 @@ interface RightPanelProps {
   report?: CoordinatorReportAPI | null;
   coordinatorSignals?: Map<string, CoordinatorSignalAPI>;
   agentSignals?: Map<string, AgentSignalAPI>;
-  liveTick?: LiveTick | null;
   mt5Connected: boolean;
   positions: LivePosition[];
   account: LiveAccount | null;
@@ -265,7 +264,6 @@ export function RightPanel({
   report,
   coordinatorSignals,
   agentSignals,
-  liveTick,
   mt5Connected,
   positions,
   account,
@@ -824,7 +822,7 @@ export function RightPanel({
       </div>
 
       {mt5Connected ? (
-        <OrderControls symbol={activePair.symbol} liveTick={liveTick} />
+        <OrderControls symbol={activePair.symbol} />
       ) : (
         <div className="relative border-t border-border">
           {/* Blurred preview of the trading controls */}

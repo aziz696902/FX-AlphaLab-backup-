@@ -29,7 +29,6 @@ export default function TradingDashboard() {
   }, [router]);
 
   const [activeInstrument, setActiveInstrument] = useState("EURUSD");
-  const [liveTick, setLiveTick] = useState<import("@/lib/api").LiveTick | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { sizes, handleMouseDown, resetLayout } = useResizableLayout();
   const inference = useInferenceData();
@@ -72,7 +71,6 @@ export default function TradingDashboard() {
             symbol={activeInstrument}
             coordinatorSignal={inference.coordinatorSignals.get(activeInstrument) ?? null}
             report={inference.report}
-            onTick={setLiveTick}
           />
 
           <Splitter
@@ -102,7 +100,6 @@ export default function TradingDashboard() {
           report={inference.report}
           coordinatorSignals={inference.coordinatorSignals}
           agentSignals={inference.agentSignals}
-          liveTick={liveTick}
           mt5Connected={mt5Status.connected}
           positions={livePositions.positions}
           account={livePositions.account}
