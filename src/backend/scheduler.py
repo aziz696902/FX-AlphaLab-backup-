@@ -154,5 +154,10 @@ class SchedulerService:
             if result.stale_warnings:
                 self.logger.warning(f"Stale sources detected: {list(result.stale_warnings.keys())}")
 
+            if not dry_run:
+                from src.backend.email_service import send_daily_report_emails
+
+                send_daily_report_emails(result.target_date)
+
         except Exception as e:
             self.logger.error(f"Inference job exception: {e}", exc_info=True)
