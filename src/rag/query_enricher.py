@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
+from src.rag.date_utils import date_to_int
+
 _SOURCE_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\bfed\b|federal reserve", re.I), "fed"),
     (re.compile(r"\becb\b|european central bank", re.I), "ecb"),
@@ -37,7 +39,7 @@ def enrich(query: str, today: date | None = None) -> dict | None:
     if source:
         clauses.append({"source": {"$eq": source}})
     if date_filter:
-        clauses.append({"date": {"$gte": date_filter}})
+        clauses.append({"date_int": {"$gte": date_filter}})
 
     if not clauses:
         return None
@@ -53,17 +55,17 @@ def _detect_source(query: str) -> str | None:
     return None
 
 
-def _detect_date_filter(query: str, today: date) -> str | None:
+def _detect_date_filter(query: str, today: date) -> int | None:
     # Check dynamic "last N days" pattern first
     m = re.search(r"\blast\s+(\d+)\s+days?\b", query, re.I)
     if m:
         delta = int(m.group(1))
-        return (today - timedelta(days=delta)).isoformat()
+        return date_to_int(today - timedelta(days=delta))
 
     for pattern, days in _TEMPORAL_PATTERNS:
         if days is None:
             continue  # dynamic pattern handled above
         if pattern.search(query):
-            return (today - timedelta(days=days)).isoformat()
+            return date_to_int(today - timedelta(days=days))
 
     return None

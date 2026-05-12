@@ -39,6 +39,7 @@ class TestChunkCbDocument:
         for chunk in chunks:
             assert chunk.metadata["source"] == "fed"
             assert chunk.metadata["date"] == "2026-05-01"
+            assert chunk.metadata["date_int"] == 20260501
             assert chunk.metadata["speaker"] == "Jerome Powell"
 
     def test_long_content_splits_into_multiple_chunks(self):

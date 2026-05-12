@@ -13,6 +13,7 @@ from pathlib import Path
 import chromadb
 
 from src.rag.chunker import Chunk, chunk_cb_document, chunk_gdelt_row
+from src.rag.date_utils import date_str_to_int, date_to_int
 from src.rag.embedder import embed_documents
 from src.rag.loaders.cb_documents import load_cb_documents
 from src.rag.loaders.gdelt_gkg import load_gdelt_gkg
@@ -118,6 +119,106 @@ def build_index(
     return {"upserted": upserted, "evicted": evicted, "total": total}
 
 
+def backfill_date_int(chroma_dir: Path, batch_size: int = 500) -> int:
+    """Backfill date_int metadata for existing chunks without re-embedding."""
+    collection = get_collection(chroma_dir)
+    if collection.count() == 0:
+        return 0
+
+    result = collection.get(include=["metadatas"])
+    ids = result.get("ids", [])
+    metas = result.get("metadatas", [])
+
+    updates_ids: list[str] = []
+    updates_metas: list[dict] = []
+
+    for id_, meta in zip(ids, metas):
+        if not isinstance(meta, dict):
+            continue
+        date_int = meta.get("date_int")
+        if isinstance(date_int, int):
+            continue
+        if isinstance(date_int, float) and date_int.is_integer():
+            date_int = int(date_int)
+        else:
+            date_int = date_str_to_int(str(meta.get("date", "")))
+        if date_int is None:
+            continue
+        new_meta = dict(meta)
+        new_meta["date_int"] = date_int
+        updates_ids.append(id_)
+        updates_metas.append(new_meta)
+
+    if not updates_ids:
+        return 0
+
+    updated = 0
+    for i in range(0, len(updates_ids), batch_size):
+        batch_ids = updates_ids[i : i + batch_size]
+        batch_metas = updates_metas[i : i + batch_size]
+        collection.update(ids=batch_ids, metadatas=batch_metas)
+        updated += len(batch_ids)
+
+    logger.info("Backfilled date_int on %d chunks", updated)
+    return updated
+
+
+def date_int_healthcheck(chroma_dir: Path, sample_size: int = 5) -> dict[str, int | list[str]]:
+    """Inspect ChromaDB metadata for date_int coverage and validity."""
+    collection = get_collection(chroma_dir)
+    if collection.count() == 0:
+        return {
+            "total": 0,
+            "missing_date_int": 0,
+            "invalid_date": 0,
+            "min_date_int": 0,
+            "max_date_int": 0,
+            "sample_missing_ids": [],
+        }
+
+    result = collection.get(include=["metadatas"])
+    ids = result.get("ids", [])
+    metas = result.get("metadatas", [])
+
+    missing_date_int = 0
+    invalid_date = 0
+    min_date_int = None
+    max_date_int = None
+    sample_missing_ids: list[str] = []
+
+    for id_, meta in zip(ids, metas):
+        if not isinstance(meta, dict):
+            continue
+        date_int = meta.get("date_int")
+        if isinstance(date_int, float) and date_int.is_integer():
+            date_int = int(date_int)
+        if not isinstance(date_int, int):
+            parsed = date_str_to_int(str(meta.get("date", "")))
+            if parsed is None:
+                invalid_date += 1
+                if len(sample_missing_ids) < sample_size:
+                    sample_missing_ids.append(id_)
+                continue
+            missing_date_int += 1
+            if len(sample_missing_ids) < sample_size:
+                sample_missing_ids.append(id_)
+            date_int = parsed
+
+        if min_date_int is None or date_int < min_date_int:
+            min_date_int = date_int
+        if max_date_int is None or date_int > max_date_int:
+            max_date_int = date_int
+
+    return {
+        "total": len(ids),
+        "missing_date_int": missing_date_int,
+        "invalid_date": invalid_date,
+        "min_date_int": min_date_int or 0,
+        "max_date_int": max_date_int or 0,
+        "sample_missing_ids": sample_missing_ids,
+    }
+
+
 def _filter_new_chunks(collection: chromadb.Collection, chunks: list[Chunk]) -> list[Chunk]:
     """Return only chunks whose IDs are not already in ChromaDB."""
     if not chunks or collection.count() == 0:
@@ -136,12 +237,20 @@ def _evict_stale(collection: chromadb.Collection, cutoff: date) -> int:
     """Delete chunks whose metadata date is older than cutoff."""
     try:
         result = collection.get(include=["metadatas"])
-        cutoff_str = cutoff.isoformat()
-        stale_ids = [
-            id_
-            for id_, meta in zip(result["ids"], result["metadatas"])
-            if meta.get("date", "9999-99-99") < cutoff_str
-        ]
+        cutoff_int = date_to_int(cutoff)
+        stale_ids: list[str] = []
+        for id_, meta in zip(result["ids"], result["metadatas"]):
+            if not isinstance(meta, dict):
+                continue
+            meta_date_int = meta.get("date_int")
+            if isinstance(meta_date_int, float) and meta_date_int.is_integer():
+                meta_date_int = int(meta_date_int)
+            if not isinstance(meta_date_int, int):
+                meta_date_int = date_str_to_int(str(meta.get("date", "")))
+            if meta_date_int is None:
+                continue
+            if meta_date_int < cutoff_int:
+                stale_ids.append(id_)
         if stale_ids:
             collection.delete(ids=stale_ids)
         return len(stale_ids)

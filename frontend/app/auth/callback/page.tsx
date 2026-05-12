@@ -10,7 +10,12 @@ function CallbackHandler() {
   useEffect(() => {
     const error = params.get("error");
     if (error) {
-      router.replace(`/auth?error=${encodeURIComponent(error)}`);
+      if (window.opener) {
+        window.opener.postMessage({ type: "google-oauth-error", error }, window.location.origin);
+        window.close();
+      } else {
+        router.replace(`/auth?error=${encodeURIComponent(error)}`);
+      }
       return;
     }
 
@@ -19,15 +24,24 @@ function CallbackHandler() {
     const user = params.get("user");
 
     if (!access_token || !refresh_token || !user) {
-      router.replace("/auth?error=missing_tokens");
+      if (window.opener) {
+        window.opener.postMessage({ type: "google-oauth-error", error: "missing_tokens" }, window.location.origin);
+        window.close();
+      } else {
+        router.replace("/auth?error=missing_tokens");
+      }
       return;
     }
 
-    localStorage.setItem("access_token", access_token);
-    localStorage.setItem("refresh_token", refresh_token);
-    localStorage.setItem("user", user);
-
-    router.replace("/dashboard");
+    if (window.opener) {
+      window.opener.postMessage({ type: "google-oauth-success", access_token, refresh_token, user }, window.location.origin);
+      window.close();
+    } else {
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
+      localStorage.setItem("user", user);
+      router.replace("/dashboard");
+    }
   }, [params, router]);
 
   return (

@@ -90,6 +90,27 @@ export default function AuthPage() {
     setMode("login");
   }
 
+  function openGooglePopup() {
+    const url = `${API_BASE_BACKEND}/auth/google`;
+    const popup = window.open(url, "google-oauth", "width=500,height=620,left=200,top=100");
+    if (!popup) return;
+    const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === "google-oauth-success") {
+        window.removeEventListener("message", handler);
+        const { access_token, refresh_token, user } = e.data;
+        localStorage.setItem("access_token", access_token);
+        localStorage.setItem("refresh_token", refresh_token);
+        localStorage.setItem("user", user);
+        router.replace("/dashboard");
+      } else if (e.data?.type === "google-oauth-error") {
+        window.removeEventListener("message", handler);
+        setOauthError(GOOGLE_ERROR_MESSAGES[e.data.error] ?? "Google sign-in failed.");
+      }
+    };
+    window.addEventListener("message", handler);
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginError(null);
@@ -270,7 +291,7 @@ export default function AuthPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => { window.location.href = `${API_BASE_BACKEND}/auth/google`; }}
+                  onClick={openGooglePopup}
                   className="h-11 w-full gap-2 rounded-lg border-border bg-white/80 text-foreground dark:bg-[#0c141c]/70 dark:text-white"
                 >
                   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -415,7 +436,7 @@ export default function AuthPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => { window.location.href = `${API_BASE_BACKEND}/auth/google`; }}
+                  onClick={openGooglePopup}
                   className="h-11 w-full gap-2 rounded-lg border-border bg-white/80 text-foreground dark:bg-[#0c141c]/70 dark:text-white"
                 >
                   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

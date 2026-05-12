@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+from src.rag.date_utils import date_str_to_int
+
 _MAX_CHUNK_CHARS = 800
 _OVERLAP_CHARS = 100
 
@@ -48,16 +50,20 @@ def chunk_gdelt_row(doc: dict) -> Chunk:
 def _make_chunk(doc: dict, text: str, idx: int, text_key: str = "content") -> Chunk:
     url = doc.get("url", "")
     source = doc.get("source", "")
+    date_str = doc.get("date", "")
+    date_int = date_str_to_int(date_str)
     chunk_id = _make_id(source, url, idx)
     metadata = {
         "source": source,
         "url": url,
-        "date": doc.get("date", ""),
+        "date": date_str,
         "chunk_idx": idx,
         "document_type": doc.get("document_type", ""),
         "speaker": doc.get("speaker") or "",
         "title": doc.get("title", ""),
     }
+    if date_int is not None:
+        metadata["date_int"] = date_int
     return Chunk(id=chunk_id, text=text, metadata=metadata)
 
 

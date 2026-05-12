@@ -31,25 +31,25 @@ class TestEnrich:
 
     def test_yesterday_date_filter(self):
         result = enrich("What happened yesterday?", today=TODAY)
-        assert result == {"date": {"$gte": "2026-05-10"}}
+        assert result == {"date_int": {"$gte": 20260510}}
 
     def test_last_week_date_filter(self):
         result = enrich("Fed news last week", today=TODAY)
         assert result is not None
         where_str = str(result)
-        assert "2026-05-04" in where_str
+        assert "20260504" in where_str
 
     def test_recent_date_filter(self):
         result = enrich("Recent market commentary", today=TODAY)
         assert result is not None
         where_str = str(result)
-        assert "date" in where_str
+        assert "date_int" in where_str
 
     def test_last_n_days_dynamic(self):
         result = enrich("ECB news last 5 days", today=TODAY)
         assert result is not None
         where_str = str(result)
-        assert "2026-05-06" in where_str
+        assert "20260506" in where_str
         assert "ecb" in where_str
 
     def test_combined_source_and_date_uses_and(self):
