@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 _MODEL = "gemini-embedding-001"
 _BATCH_SIZE = 100  # texts per API call
+_INTER_BATCH_DELAY = 1.0  # 60 req/min, comfortably under the 100/min free-tier limit
 _RATE_LIMIT_WAIT = 62  # seconds to sleep on 429 before retrying
 
 
@@ -57,6 +58,7 @@ def _embed_batched(texts: list[str], task_type: str) -> list[list[float]]:
             result.extend(emb.values for emb in response.embeddings)
             i += _BATCH_SIZE
             just_waited = False
+            time.sleep(_INTER_BATCH_DELAY)
         except ClientError as exc:
             if exc.code == 429:
                 if just_waited:

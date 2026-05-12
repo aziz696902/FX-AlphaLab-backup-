@@ -275,14 +275,9 @@ class InferencePipeline:
         )
         gdelt_node = GDELTSignalNode(silver_dir=sentiment_dir / "source=gdelt")
 
-        from src.shared.config.sources import load_sources_config
-
-        sources_cfg = load_sources_config(self._root / "config" / "sources.yaml")
-        gtrends_cfg = sources_cfg.sources.get("google_trends")
+        gtrends_silver = sentiment_dir / "google_trends_weekly.parquet"
         gtrends_node = (
-            GoogleTrendsSignalNode(silver_dir=sentiment_dir)
-            if gtrends_cfg and gtrends_cfg.enabled
-            else None
+            GoogleTrendsSignalNode(silver_dir=sentiment_dir) if gtrends_silver.exists() else None
         )
 
         return SentimentAgent(

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Settings, User, RotateCcw, Wallet } from "lucide-react";
+import { Bell, Settings, User, RotateCcw, Wallet, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CoordinatorReportAPI } from "@/lib/api";
+import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const instruments = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"];
@@ -67,11 +68,48 @@ function signalAge(dateStr: string | null): { label: string; isStale: boolean } 
   return { label: `${diffD}d ago`, isStale: true };
 }
 
+function TierBadge({ tier }: { tier: string }) {
+  if (tier === "elite") {
+    return (
+      <div className="relative overflow-hidden rounded px-2.5 py-1 bg-amber-500/10 border border-amber-400/40">
+        <style>{`
+          @keyframes tb-shimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
+        <span className="relative z-10 flex items-center gap-1 text-[9px] font-bold tracking-[0.18em] uppercase text-amber-600">
+          <Crown className="h-2.5 w-2.5" />
+          Elite
+        </span>
+        <span
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/30 to-transparent"
+          style={{ animation: "tb-shimmer 3s ease-in-out infinite 1s" }}
+        />
+      </div>
+    );
+  }
+  if (tier === "pro") {
+    return (
+      <div className="rounded px-2.5 py-1 bg-blue-600/10 border border-blue-500/40">
+        <span className="flex items-center gap-1 text-[9px] font-bold tracking-[0.18em] uppercase text-blue-600">
+          <Zap className="h-2.5 w-2.5" />
+          Pro
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded px-2.5 py-1 border border-border">
+      <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-muted-foreground">Free</span>
+    </div>
+  );
+}
+
 export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, report }: TopBarProps) {
   const router = useRouter();
-  const lastUpdated = report?.date ?? null;
+  const { userTier } = useUpgradeModal();
   const balance = useAccountBalance();
-  const age = signalAge(lastUpdated);
 
   function handleLogout() {
     localStorage.removeItem("access_token");
@@ -86,27 +124,11 @@ export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, re
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <Image src="/logo.png" alt="FX AlphaLab" width={48} height={30} className="h-auto w-12" />
-          <span className="font-semibold text-foreground">AlphaLab</span>
+          <span className="font-semibold text-foreground">FX-AlphaLab</span>
         </div>
         <Badge variant="default" className="bg-[var(--long)] text-white text-[10px] px-1.5 py-0.5 h-5">
           LIVE
         </Badge>
-        {/* Signal date + age */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">
-            Signal: <span className="font-mono">{lastUpdated ?? "—"}</span>
-          </span>
-          {lastUpdated && (
-            <span className={cn(
-              "text-[10px] font-medium px-1.5 py-0.5 rounded",
-              age.isStale
-                ? "bg-amber-100 text-amber-700 border border-amber-200"
-                : "bg-muted text-muted-foreground"
-            )}>
-              {age.label}
-            </span>
-          )}
-        </div>
         {report?.hold_reason && (
           <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 h-5 border-amber-200">
             HOLD: {report.hold_reason}
@@ -146,6 +168,8 @@ export function TopBar({ activeInstrument, onInstrumentChange, onResetLayout, re
               : "—"}
           </span>
         </div>
+
+        <TierBadge tier={userTier} />
 
         <div className="h-8 w-px bg-border" />
 

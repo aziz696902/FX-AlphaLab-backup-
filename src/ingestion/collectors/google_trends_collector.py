@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.cookiejar
 import random
 import time
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ import pandas as pd
 from pytrends.request import TrendReq
 
 from src.ingestion.collectors.base_collector import BaseCollector
+from src.shared.config import Config
 
 
 class GoogleTrendsCollector(BaseCollector):
@@ -41,6 +43,29 @@ class GoogleTrendsCollector(BaseCollector):
         super().__init__(output_dir=output_dir, log_file=log_file)
         self.fetched_batches: list[str] = []
         self.failed_batches: list[str] = []
+        self._cookie_jar = self._load_cookie_jar()
+
+    def _load_cookie_jar(self) -> http.cookiejar.MozillaCookieJar | None:
+        path = Config.GOOGLE_TRENDS_COOKIES_FILE
+        if path is None:
+            return None
+        jar = http.cookiejar.MozillaCookieJar()
+        jar.load(str(path), ignore_discard=True, ignore_expires=True)
+        self.logger.info("Loaded Google Trends cookies from %s", path)
+        return jar
+
+    _BROWSER_HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://trends.google.com/",
+    }
+
+    def _build_pytrends(self) -> TrendReq:
+        pt = TrendReq(hl="en-US", tz=0, requests_args={"headers": self._BROWSER_HEADERS})
+        if self._cookie_jar is not None:
+            pt.cookies = {c.name: c.value for c in self._cookie_jar}
+        return pt
 
     def collect(
         self,
@@ -52,7 +77,7 @@ class GoogleTrendsCollector(BaseCollector):
         results: dict[str, int] = {}
         self.fetched_batches = []
         self.failed_batches = []
-        pytrends = TrendReq(hl="en-US", tz=0)
+        pytrends = self._build_pytrends()
 
         for theme, keyword_batches in self.KEYWORD_GROUPS.items():
             for batch_index, kw_list in enumerate(keyword_batches):
@@ -85,7 +110,7 @@ class GoogleTrendsCollector(BaseCollector):
 
     def health_check(self) -> bool:
         try:
-            pytrends = TrendReq(hl="en-US", tz=0)
+            pytrends = self._build_pytrends()
             timeframe_end = datetime.utcnow().date()
             timeframe_start = timeframe_end - timedelta(days=30)
             timeframe = f"{timeframe_start:%Y-%m-%d} {timeframe_end:%Y-%m-%d}"
@@ -107,7 +132,7 @@ class GoogleTrendsCollector(BaseCollector):
         for attempt in range(max_retries):
             try:
                 # Fresh session per attempt — avoids reusing a poisoned/rate-limited connection
-                pt = TrendReq(hl="en-US", tz=0)
+                pt = self._build_pytrends()
                 pt.build_payload(kw_list=kw_list, timeframe=timeframe)
                 return pt.interest_over_time()
             except Exception as exc:

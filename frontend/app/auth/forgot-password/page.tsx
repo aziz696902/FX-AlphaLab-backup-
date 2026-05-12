@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
       <div className="relative flex min-h-screen items-center justify-end px-6 py-10 sm:px-10">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-8 flex items-center gap-2">
           <Image src="/logo.png" alt="FX AlphaLab" width={120} height={75} className="h-auto w-[100px] sm:w-[120px]" priority />
-          <span className="text-xl font-semibold text-[#E8ECF0]">AlphaLab</span>
+          <span className="text-xl font-semibold text-[#E8ECF0]">FX-AlphaLab</span>
         </div>
 
         <Card className="w-full max-w-[420px] -translate-x-7 border-white/20 bg-white/90 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur dark:border-white/10 dark:bg-[#0b1219]/85 dark:shadow-[0_20px_60px_rgba(0,0,0,0.55)]">

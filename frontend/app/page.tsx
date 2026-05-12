@@ -1,4 +1,5 @@
 import Navigation from "@/components/landing/navigation";
+import BodyClass from "@/components/landing/body-class";
 import Hero from "@/components/landing/hero";
 import SignalStrip from "@/components/landing/signal-strip";
 import Features from "@/components/landing/features";
@@ -11,6 +12,7 @@ import { BgZone } from "@/components/landing/scroll-bg-provider";
 export default function LandingPage() {
   return (
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", background: '#000' }}>
+      <BodyClass className="home-scrollbar-hide" />
       <Navigation />
 
       {/* Zone 1 — hero */}
@@ -19,7 +21,7 @@ export default function LandingPage() {
       </BgZone>
 
       {/* Black gap */}
-      <div style={{ height: 120, background: '#000' }} />
+      <div style={{ height: 64, background: '#000' }} />
 
       {/* Zone 2 */}
       <BgZone bg="/bg-scroll-1.png">
@@ -28,7 +30,7 @@ export default function LandingPage() {
       </BgZone>
 
       {/* Black gap */}
-      <div style={{ height: 120, background: '#000' }} />
+      <div style={{ height: 64, background: '#000' }} />
 
       {/* Zone 3 */}
       <BgZone bg="/bg-scroll-2.png">

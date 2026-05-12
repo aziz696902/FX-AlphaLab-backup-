@@ -13,40 +13,102 @@ import {
 
 const WATCHLIST_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "USDCHF"];
 
+// ── label helpers (mirrors right-panel.tsx) ───────────────────────────────────
+
+function toTechDirection(v: number | null | undefined): string {
+  if (v == null) return "—";
+  if (v > 0.5) return "Bullish";
+  if (v < -0.5) return "Bearish";
+  if (v > 0.15) return "Sl. Bullish";
+  if (v < -0.15) return "Sl. Bearish";
+  return "Neutral";
+}
+
+function toVolRegime(v: string | null | undefined): string {
+  if (!v) return "—";
+  return v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+}
+
+function toMacroDir(v: string | null | undefined): string {
+  if (!v) return "—";
+  if (v === "up") return "Bullish";
+  if (v === "down") return "Bearish";
+  return v;
+}
+
+function toMacroDriver(v: string | null | undefined): string {
+  if (!v) return "—";
+  const map: Record<string, string> = {
+    carry_signal_score: "Carry Trade",
+    regime_context_score: "Regime Context",
+    fundamental_mispricing_score: "Mispricing",
+    macro_surprise_score: "Econ Surprise",
+  };
+  return map[v] ?? v;
+}
+
+function toGeoRegime(v: string | null | undefined): string {
+  if (!v) return "—";
+  if (v === "high") return "Elevated";
+  if (v === "low") return "Low";
+  return v;
+}
+
+function toBilateralRisk(v: number | null | undefined): string {
+  if (v == null) return "—";
+  return `${(v * 100).toFixed(0)}%`;
+}
+
+function toAttentionLevel(v: number | null | undefined): string {
+  if (v == null) return "—";
+  if (v > 2.0) return "High Alert";
+  if (v > 1.0) return "Elevated";
+  if (v >= -1.0) return "Normal";
+  if (v >= -2.0) return "Low";
+  return "Suppressed";
+}
+
+// ── agent pulse definitions ───────────────────────────────────────────────────
+
 interface AgentPulseDef {
   name: string;
-  driver: (sig: AgentSignalAPI | undefined) => string;
-  impact: string;
+  f1Label: string;
+  f1: (sig: AgentSignalAPI | undefined) => string;
+  f2Label: string;
+  f2: (sig: AgentSignalAPI | undefined) => string;
 }
 
 const AGENT_PULSE_DEFS: AgentPulseDef[] = [
   {
     name: "Technical",
-    driver: (s) => s?.tech_vol_regime ?? "—",
-    impact: "entry (1d)",
+    f1Label: "Direction",
+    f1: (s) => toTechDirection(s?.tech_direction),
+    f2Label: "Volatility",
+    f2: (s) => toVolRegime(s?.tech_vol_regime),
   },
   {
     name: "Macro",
-    driver: (s) => s?.macro_dominant_driver ?? "—",
-    impact: "direction (5d)",
+    f1Label: "Direction",
+    f1: (s) => toMacroDir(s?.macro_direction),
+    f2Label: "Key Driver",
+    f2: (s) => toMacroDriver(s?.macro_dominant_driver),
   },
   {
     name: "Geopolitical",
-    driver: (s) =>
-      s?.geo_base_zone_explanation?.dominant_driver ?? s?.geo_risk_regime ?? "—",
-    impact: "volatility (2w)",
+    f1Label: "Risk",
+    f1: (s) => toGeoRegime(s?.geo_risk_regime),
+    f2Label: "Bilateral",
+    f2: (s) => toBilateralRisk(s?.geo_bilateral_risk),
   },
   {
     name: "Sentiment",
-    driver: (s) => {
+    f1Label: "Stress",
+    f1: (s) => {
       if (!s) return "—";
-      if (s.composite_stress_flag) {
-        const src = s.sentiment_stress_sources?.[0];
-        return src ?? "stress flagged";
-      }
-      return "normal";
+      return s.composite_stress_flag ? "Flagged" : "None";
     },
-    impact: "regime overlay",
+    f2Label: "Attention",
+    f2: (s) => toAttentionLevel(s?.gdelt_attention_zscore),
   },
 ];
 
@@ -73,8 +135,7 @@ export function LeftSidebar({
   const watchlistTicks = useWatchlistTicks();
 
   const hasData = coordinatorSignals.size > 0;
-  // Pick a representative pair for Agent Pulse (first available, or EURUSD)
-  const pulseSignal = agentSignals.get("EURUSD") ?? agentSignals.values().next().value;
+  const pulseSignal = agentSignals.get(activeInstrument);
 
   if (collapsed) {
     return (
@@ -193,41 +254,35 @@ export function LeftSidebar({
         </div>
 
         {/* Agent Pulse Section */}
-        <div className="border-t border-border p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+        <div className="border-t border-border px-3 pt-2.5 pb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             Agent Pulse
           </h3>
 
           {canAccess("elite") ? (
-            <div className="space-y-2.5">
+            <div className="divide-y divide-border/50">
               {AGENT_PULSE_DEFS.map((def) => {
-                const agentSig = agentSignals.get("EURUSD") ?? pulseSignal;
-                const driver = def.driver(agentSig);
-                const isDataReady = hasData && agentSig !== undefined;
-                const status = !isDataReady ? "WARN" : "OK";
-
+                const isDataReady = hasData && pulseSignal !== undefined;
                 return (
-                  <div key={def.name} className="bg-muted/50 rounded px-2 py-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="font-medium">{def.name}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "text-[9px] px-1 py-0 h-3.5 font-medium",
-                          status === "OK" && "bg-[var(--long)]/15 text-[var(--long)]",
-                          status === "WARN" && "bg-amber-500/15 text-amber-600"
-                        )}
-                      >
-                        {status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                      <span>Driver:</span>
-                      <span className="text-foreground font-medium truncate max-w-[100px]">{driver}</span>
-                      <span className="mx-0.5">|</span>
-                      <span>Impact:</span>
-                      <span className="text-foreground font-medium">{def.impact}</span>
+                  <div key={def.name} className="flex items-center gap-2 py-2">
+                    <span
+                      className={cn(
+                        "mt-0.5 h-1.5 w-1.5 rounded-full shrink-0",
+                        isDataReady ? "bg-[var(--long)]" : "bg-amber-500"
+                      )}
+                    />
+                    <span className="text-xs font-medium w-[78px] shrink-0">{def.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1 text-xs truncate">
+                        <span className="font-medium text-foreground truncate">{def.f1(pulseSignal)}</span>
+                        <span className="text-muted-foreground/60">·</span>
+                        <span className="text-muted-foreground truncate">{def.f2(pulseSignal)}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 text-[10px] text-muted-foreground/60 truncate">
+                        <span>{def.f1Label}</span>
+                        <span>·</span>
+                        <span>{def.f2Label}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -238,8 +293,8 @@ export function LeftSidebar({
               <div className="divide-y divide-border/40">
                 {AGENT_PULSE_DEFS.map((def) => (
                   <div key={def.name} className="flex items-center justify-between px-3 py-2">
-                    <span className="text-[11px] font-medium text-muted-foreground">{def.name}</span>
-                    <span className="text-[10px] font-mono text-muted-foreground/35 tracking-widest">— · —</span>
+                    <span className="text-xs font-medium text-muted-foreground">{def.name}</span>
+                    <span className="text-[11px] font-mono text-muted-foreground/35 tracking-widest">— · —</span>
                   </div>
                 ))}
               </div>

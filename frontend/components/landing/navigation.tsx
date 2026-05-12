@@ -34,7 +34,7 @@ export default function Navigation() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image src="/logo.png" alt="FX AlphaLab" width={48} height={30} className="h-auto w-12" />
-          <span className="font-semibold text-[#E8ECF0]">AlphaLab</span>
+          <span className="font-semibold text-[#E8ECF0]">FX-AlphaLab</span>
         </Link>
 
         {/* Center nav links */}

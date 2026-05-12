@@ -139,6 +139,16 @@
   background: var(--muted-foreground);
 }
 
+.home-scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home-scrollbar-hide::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* Monospace numbers for prices */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

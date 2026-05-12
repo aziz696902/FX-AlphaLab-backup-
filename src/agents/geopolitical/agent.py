@@ -363,8 +363,8 @@ class GeopoliticalAgent(BaseAgent):
         for _, row in df.head(self.TOP_K_EVENTS).iterrows():
             events.append(
                 TopEvent(
-                    actor1_name=row.get("actor1_name"),
-                    actor2_name=row.get("actor2_name"),
+                    actor1_name=None if pd.isna(row.get("actor1_name")) else row.get("actor1_name"),
+                    actor2_name=None if pd.isna(row.get("actor2_name")) else row.get("actor2_name"),
                     goldstein_scale=float(row.get("goldstein_scale", 0.0) or 0.0),
                     avg_tone=float(row.get("avg_tone", 0.0) or 0.0),
                     num_mentions=int(row.get("num_mentions", 0) or 0),

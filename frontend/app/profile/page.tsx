@@ -399,7 +399,11 @@ function ProfilePageInner() {
                 <div className="flex flex-col gap-5">
 
                   {/* Plan card */}
-                  <PlanSection tier={user?.tier ?? "free"} />
+                  <PlanSection
+                    tier={user?.tier ?? "free"}
+                    onTierChange={(t) => setUser((u) => u ? { ...u, tier: t } : u)}
+                    showToast={showToast}
+                  />
 
                   {/* MT5 card */}
                   <SectionCard
@@ -702,10 +706,52 @@ const TIER_META: Record<string, {
   },
 };
 
-function PlanSection({ tier }: { tier: string }) {
+function PlanSection({
+  tier,
+  onTierChange,
+  showToast,
+}: {
+  tier: string;
+  onTierChange: (t: string) => void;
+  showToast: (ok: boolean, msg: string) => void;
+}) {
   const meta = TIER_META[tier] ?? TIER_META.free;
-  const { open } = useUpgradeModal();
+  const { open, refreshTier } = useUpgradeModal();
   const Icon = meta.Icon;
+  const [confirmDowngrade, setConfirmDowngrade] = useState<string | null>(null);
+  const [downgrading, setDowngrading] = useState(false);
+
+  const downgradeTarget = tier === "elite" ? "pro" : tier === "pro" ? "free" : null;
+  const downgradeMeta = downgradeTarget ? TIER_META[downgradeTarget] : null;
+
+  async function handleDowngrade() {
+    if (!downgradeTarget) return;
+    setDowngrading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({ tier: downgradeTarget }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(false, data.detail ?? "Downgrade failed.");
+        return;
+      }
+      onTierChange(data.tier ?? downgradeTarget);
+      localStorage.setItem("user", JSON.stringify(data));
+      refreshTier();
+      setConfirmDowngrade(null);
+      showToast(true, `Plan changed to ${downgradeMeta?.label ?? downgradeTarget}.`);
+    } catch {
+      showToast(false, "Cannot reach server.");
+    } finally {
+      setDowngrading(false);
+    }
+  }
 
   return (
     <SectionCard
@@ -741,6 +787,47 @@ function PlanSection({ tier }: { tier: string }) {
           ))}
         </ul>
       </div>
+
+      {/* Downgrade section */}
+      {downgradeTarget && downgradeMeta && (
+        <div className="mt-3 pt-3 border-t border-border">
+          {confirmDowngrade === downgradeTarget ? (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+              <p className="text-xs text-foreground mb-2.5">
+                Downgrade to <span className="font-semibold">{downgradeMeta.label}</span>? You&apos;ll lose access to{" "}
+                {tier === "elite" ? "Agent Outputs and Deep Dive Reports" : "all AI signals"}.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDowngrade}
+                  disabled={downgrading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold tracking-widest uppercase bg-destructive/10 border border-destructive/30 text-destructive hover:bg-destructive hover:text-white disabled:opacity-40 transition-colors"
+                >
+                  {downgrading ? (
+                    <><span className="h-2.5 w-2.5 border-2 border-current/30 border-t-current rounded-full animate-spin" /> Downgrading…</>
+                  ) : "Confirm"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDowngrade(null)}
+                  className="px-3 py-1.5 rounded text-[10px] font-bold tracking-widest uppercase text-muted-foreground hover:text-foreground border border-border hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDowngrade(downgradeTarget)}
+              className="text-[10px] font-medium text-muted-foreground hover:text-destructive transition-colors underline-offset-2 hover:underline"
+            >
+              {tier === "elite" ? "Downgrade to Pro" : "Cancel to Free"}
+            </button>
+          )}
+        </div>
+      )}
     </SectionCard>
   );
 }
