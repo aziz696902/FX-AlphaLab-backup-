@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FX-AlphaLab — Architecture</title>
+  <link rel="stylesheet" href="styles/layout.css">
+</head>
+<body>
+
+<div id="bar">
+  <span class="bar-title">FX-AlphaLab</span>
+  <div class="bar-div"></div>
+  <span class="bar-sub">Multi-Agent Architecture</span>
+  <div class="bar-div"></div>
+  <span class="bar-tag">Interactive Map</span>
+</div>
+
+<div id="hint">Scroll to zoom · Drag to pan · Click nodes for details</div>
+
+<svg id="svg-wrap" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr-c" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#22d3ee" opacity=".7"/>
+    </marker>
+    <marker id="arr-p" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#a78bfa" opacity=".7"/>
+    </marker>
+    <marker id="arr-o" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#fb923c" opacity=".7"/>
+    </marker>
+    <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#34d399" opacity=".7"/>
+    </marker>
+    <marker id="arr-a" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#fbbf24" opacity=".7"/>
+    </marker>
+    <marker id="arr-s" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M.5.5L.5 5.5L7 3z" fill="#64748b" opacity=".7"/>
+    </marker>
+  </defs>
+  <g id="world"></g>
+</svg>
+
+<div id="panel">
+  <button id="pclose">×</button>
+  <div id="pcontent"></div>
+</div>
+
+<div id="legend">
+  <div class="leg-h">Agents</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#22d3ee"></div>Technical</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#a78bfa"></div>Macro</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#fb923c"></div>Sentiment</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#34d399"></div>Geopolitical</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#fbbf24"></div>Coordinator</div>
+  <div style="margin-top:9px" class="leg-h">Types</div>
+  <div class="leg-i"><div class="leg-dot" style="background:#64748b"></div>Source / Storage</div>
+  <div class="leg-i">
+    <div style="width:18px;height:1px;background:#475569;border-top:1px dashed #475569;margin-top:1px"></div>
+    Context-only
+  </div>
+</div>
+
+<div id="zctrl">
+  <button class="zbtn" id="zoom-in">+</button>
+  <button class="zbtn fit" id="zoom-fit">⊡</button>
+  <button class="zbtn" id="zoom-out">−</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>
