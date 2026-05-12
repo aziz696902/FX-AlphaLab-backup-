@@ -1,4 +1,4 @@
-export const reportSymbols = ["EURUSD", "GBPUSD", "USDJPY"] as const;
+export const reportSymbols = ["EURUSD", "GBPUSD", "USDCHF", "USDJPY"] as const;
 
 export type ReportSymbol = (typeof reportSymbols)[number];
 

@@ -285,6 +285,28 @@ class CoordinatorReportRow(Base):
     __table_args__ = (Index("idx_coordinator_reports_date", "date"),)
 
 
+class DailyReport(Base):
+    """Generated HTML report per (date, pair).
+
+    Saved both to disk (data/reports/YYYY-MM-DD/{pair}.html) and here for
+    API serving.  html column holds the inner <div class="report-shell"> content
+    (no <html>/<body> wrapper) so the frontend can inject it via innerHTML.
+    """
+
+    __tablename__ = "daily_reports"
+
+    id = Column(Integer, primary_key=True)
+    date = Column(Date, nullable=False)
+    pair = Column(String(10), nullable=False)
+    html = Column(Text, nullable=False)
+    generated_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("date", "pair", name="uq_daily_reports_date_pair"),
+        Index("idx_daily_reports_date", "date"),
+    )
+
+
 class TradeLogRow(Base):
     """Historical and live trade log, one row per closed position.
 

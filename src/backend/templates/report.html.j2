@@ -1,0 +1,451 @@
+<div class="report-shell">
+  <header class="topbar no-print">
+    <a class="brand" href="#top" aria-label="FX-AlphaLab report home">
+      <span class="brand-mark" aria-hidden="true">
+        <img src="/reports/static/brand/fx-mark1.png" alt="" />
+      </span>
+      <span class="brand-copy">
+        <strong>FX-AlphaLab</strong>
+        <small>Predictive Market Intelligence</small>
+      </span>
+    </a>
+    <nav class="topbar-nav">
+      <a href="#summary" data-section-link>Summary</a>
+      <a href="#agents" data-section-link>Agents</a>
+      <a href="#charts" data-section-link>Charts</a>
+      <a href="#geopolitical" data-section-link>Geo Path</a>
+      <a href="#risk-footer" data-section-link>Risk</a>
+    </nav>
+    <label class="pair-select-wrap" aria-label="Available pairs">
+      <select class="pair-select">
+        {% for p in all_pairs_list %}
+        <option value="{{ p }}"{% if p == pair %} selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="topbar-actions">
+      <button class="secondary-action compact-action" type="button" data-toggle-expert>Expert Appendix</button>
+      <button class="secondary-action compact-action" type="button" onclick="window.print()">Export PDF</button>
+    </div>
+  </header>
+
+  <main class="report-main" id="top">
+
+    {# ── Hero Band ───────────────────────────────────────────────────────── #}
+    <section class="hero-band">
+      <div class="hero-copy">
+        <span class="report-kicker">{{ pair }} | {{ date_display }} | {{ generated_at }} UTC | Live inference</span>
+        <h1 class="hero-pair">{{ pair }}</h1>
+        <div class="hero-call-row">
+          <span class="hero-call-pill">{{ action }}</span>
+          <span>{{ confidence_pct }} confidence</span>
+          <span>{{ risk_level }} risk</span>
+        </div>
+        <p class="hero-thesis">{{ hero_thesis }}</p>
+        <p class="hero-subtitle">{{ hero_subtitle }}</p>
+        <div class="hero-metrics">
+          <article class="hero-stat"><span>Final call</span><strong>{{ action }}</strong></article>
+          <article class="hero-stat"><span>Confidence</span><strong>{{ confidence_pct }}</strong></article>
+          <article class="hero-stat"><span>Risk</span><strong>{{ risk_level }}</strong></article>
+          <article class="hero-stat"><span>Horizon</span><strong>{{ horizon }}</strong></article>
+          <article class="hero-stat"><span>R:R</span><strong>{{ risk_reward }}</strong></article>
+          <article class="hero-stat hero-stat--generated"><span>Generated</span><strong>{{ date_display }}<br>{{ generated_at }} UTC</strong></article>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <figure class="hero-visual-card">
+          <img src="{{ hero_image_src }}" alt="" aria-hidden="true" />
+          <figcaption>AI-generated visual — not analytical evidence.</figcaption>
+        </figure>
+        <div class="snapshot-grid">
+          <article><span>Spot</span><strong>{{ spot_price }}</strong></article>
+          <article><span>Daily move</span><strong>{{ daily_move_pct }}</strong></article>
+          <article><span>Vol (3d)</span><strong>{{ vol_pct }}</strong></article>
+          <article><span>Cross-agent</span><strong>{{ action }}</strong></article>
+        </div>
+      </aside>
+    </section>
+
+    {# ── Decision Summary ─────────────────────────────────────────────────── #}
+    <section id="summary" class="summary-section decision-summary-panel">
+      <div class="decision-summary-head">
+        <span class="report-kicker">Decision summary</span>
+        <h2>{{ decision_title }}</h2>
+      </div>
+      <div class="decision-dashboard">
+        <div class="decision-left-stack">
+          <article class="decision-call-card">
+            <span class="decision-card-label">Recommended stance</span>
+            <p>{{ hero_subtitle }}</p>
+          </article>
+          <div class="decision-drivers">
+            {% for driver in decision_drivers %}
+            <article class="decision-driver-card">
+              <span class="driver-index">{{ loop.index }}</span>
+              <p>{{ driver }}</p>
+            </article>
+            {% endfor %}
+          </div>
+        </div>
+        <aside class="decision-risk-card">
+          <div class="risk-card-top">
+            <span class="decision-card-label">Main invalidation risk</span>
+            <span class="risk-severity-pill">Key risk</span>
+          </div>
+          <h3>{{ invalidation_risk_title }}</h3>
+          <p class="risk-monitor-text">{{ invalidation_risk_body }}</p>
+          <div class="risk-monitor-row">
+            <span>Monitor</span>
+            <strong>{{ monitor_signals | join(" · ") }}</strong>
+          </div>
+          <div class="risk-evidence-block">
+            <span>Signal sources</span>
+            <div class="risk-evidence-chips">
+              <code>{{ direction_source }}</code>
+              <code>{{ vol_source }}</code>
+              <code>{{ global_regime }}_regime</code>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    {# ── Agent Breakdown ──────────────────────────────────────────────────── #}
+    <section id="agents" class="workbench-section">
+      <div class="section-head section-split">
+        <div>
+          <span class="report-kicker">Agent breakdown</span>
+          <h2>Four engines, live signal, deterministic trade parameters</h2>
+          <p>{{ action }} is the dominant cross-agent lean for {{ pair }} on {{ date_display }}.</p>
+        </div>
+      </div>
+      <div class="agent-grid-simple">
+
+        {# Technical #}
+        <article class="agent-panel simple-agent-panel {{ tech_card_class }}">
+          <div class="agent-content">
+            <header class="agent-header">
+              <div>
+                <span class="agent-kicker">Technical Agent</span>
+                <div class="agent-title-row">
+                  <h3>{{ tech_direction_label }}</h3>
+                  <span class="agent-status-pill">{{ tech_confidence_pct }} confidence</span>
+                </div>
+              </div>
+            </header>
+            <div class="agent-body">
+              <p>{{ tech_summary }}</p>
+              <dl class="agent-stats-list">
+                <div><dt>Vol Regime</dt><dd>{{ tech_vol_regime }}</dd></div>
+                <div><dt>RSI(14)</dt><dd>{{ tech_rsi }}</dd></div>
+                <div><dt>BB%</dt><dd>{{ tech_bb_pct }}</dd></div>
+                <div><dt>Above EMA200</dt><dd>{{ tech_above_ema200 }}</dd></div>
+                <div><dt>ATR rank</dt><dd>{{ tech_atr_rank }}</dd></div>
+              </dl>
+              <div class="tf-votes">
+                {% for tf, vote in tech_tf_votes %}
+                <span class="tf-chip {{ 'tf-chip--bull' if vote == 1 else 'tf-chip--bear' }}">{{ tf }} {{ '▲' if vote == 1 else '▼' }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </article>
+
+        {# Macro #}
+        <article class="agent-panel simple-agent-panel {{ macro_card_class }}">
+          <div class="agent-content">
+            <header class="agent-header">
+              <div>
+                <span class="agent-kicker">Macro Agent</span>
+                <div class="agent-title-row">
+                  <h3>{{ macro_direction_label }}</h3>
+                  <span class="agent-status-pill">{{ macro_confidence_pct }} confidence</span>
+                </div>
+              </div>
+            </header>
+            <div class="agent-body">
+              <p>{{ macro_summary }}</p>
+              <dl class="agent-stats-list">
+                <div><dt>Dominant driver</dt><dd>{{ macro_dominant_driver }}</dd></div>
+                <div><dt>Carry score</dt><dd>{{ macro_carry_score }}</dd></div>
+                <div><dt>Regime score</dt><dd>{{ macro_regime_score }}</dd></div>
+                <div><dt>Fundamental</dt><dd>{{ macro_fundamental_score }}</dd></div>
+                <div><dt>Surprise</dt><dd>{{ macro_surprise_score }}</dd></div>
+                <div><dt>CB bias</dt><dd>{{ macro_bias_score }}</dd></div>
+              </dl>
+            </div>
+          </div>
+        </article>
+
+        {# Geopolitical #}
+        <article class="agent-panel simple-agent-panel {{ geo_card_class }}">
+          <div class="agent-content">
+            <header class="agent-header">
+              <div>
+                <span class="agent-kicker">Geopolitical Agent (GAT)</span>
+                <div class="agent-title-row">
+                  <h3>{{ geo_regime_label }}</h3>
+                  <span class="agent-status-pill">Bilateral risk {{ geo_bilateral_risk }}</span>
+                </div>
+              </div>
+            </header>
+            <div class="agent-body">
+              <p>{{ geo_summary }}</p>
+              <dl class="agent-stats-list">
+                <div><dt>Base zone</dt><dd>{{ geo_base_zone }} — {{ geo_base_driver }}</dd></div>
+                <div><dt>Quote zone</dt><dd>{{ geo_quote_zone }} — {{ geo_quote_driver }}</dd></div>
+                {% if geo_top_events %}
+                {% for ev in geo_top_events[:3] %}
+                <div><dt>Event</dt><dd>{{ ev.actor1_name or '?' }} → {{ ev.actor2_name or '?' }} (Goldstein {{ "%.1f"|format(ev.goldstein_scale) }})</dd></div>
+                {% endfor %}
+                {% endif %}
+              </dl>
+            </div>
+          </div>
+        </article>
+
+        {# Sentiment #}
+        <article class="agent-panel simple-agent-panel {{ sentiment_card_class }}">
+          <div class="agent-content">
+            <header class="agent-header">
+              <div>
+                <span class="agent-kicker">Sentiment Agent</span>
+                <div class="agent-title-row">
+                  <h3>{{ sentiment_stress_label }}</h3>
+                  <span class="agent-status-pill">{{ 'Elevated stress' if composite_stress else 'Normal conditions' }}</span>
+                </div>
+              </div>
+            </header>
+            <div class="agent-body">
+              <p>{{ sentiment_summary }}</p>
+              <dl class="agent-stats-list">
+                {% if gdelt_tone_z is not none %}
+                <div><dt>GDELT tone σ</dt><dd>{{ "%.2f"|format(gdelt_tone_z) }}</dd></div>
+                {% endif %}
+                {% if gdelt_attention_z is not none %}
+                <div><dt>GDELT attention σ</dt><dd>{{ "%.2f"|format(gdelt_attention_z) }}</dd></div>
+                {% endif %}
+                {% if macro_attention_z is not none %}
+                <div><dt>Macro attention σ</dt><dd>{{ "%.2f"|format(macro_attention_z) }}</dd></div>
+                {% endif %}
+                {% if stocktwits_vol_signal is not none %}
+                <div><dt>StockTwits vol</dt><dd>{{ "%.4f"|format(stocktwits_vol_signal) }}</dd></div>
+                {% endif %}
+              </dl>
+              {% if stress_sources %}
+              <div class="stress-chips">
+                {% for src in stress_sources %}
+                <span class="stress-chip">{{ src }}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    {# ── Charts — OHLCV + Macro ────────────────────────────────────────────── #}
+    <section id="charts" class="charts-section">
+      <div class="section-head">
+        <span class="report-kicker">Technical &amp; Macro charts</span>
+        <h2>Price action with indicators and macro sub-score breakdown</h2>
+      </div>
+      <div class="charts-grid">
+
+        <div class="chart-card">
+          <p class="chart-caption"><span>{{ pair }} — Daily candlestick, RSI(14), MACD</span></p>
+          <div id="chart-ohlcv-{{ pair_lower }}" style="height:520px;width:100%;"></div>
+          <script>
+          (function() {
+            var d = {{ ohlcv_data_json | safe }};
+            var l = {{ ohlcv_layout_json | safe }};
+            Plotly.newPlot('chart-ohlcv-{{ pair_lower }}', d, l, {responsive:true,displayModeBar:false});
+          })();
+          </script>
+        </div>
+
+        <div class="chart-card">
+          <p class="chart-caption"><span>Macro sub-score breakdown — dominant driver: {{ macro_dominant_driver }}</span></p>
+          <div id="chart-macro-{{ pair_lower }}" style="height:340px;width:100%;"></div>
+          <script>
+          (function() {
+            var d = {{ macro_data_json | safe }};
+            var l = {{ macro_layout_json | safe }};
+            Plotly.newPlot('chart-macro-{{ pair_lower }}', d, l, {responsive:true,displayModeBar:false});
+          })();
+          </script>
+        </div>
+
+      </div>
+    </section>
+
+    {# ── Geopolitical — GAT Network + Zone Features ────────────────────────── #}
+    <section id="geopolitical" class="charts-section">
+      <div class="section-head">
+        <span class="report-kicker">Geopolitical risk path (GAT ensemble)</span>
+        <h2>Currency zone risk network and feature z-score breakdown</h2>
+      </div>
+      <div class="charts-grid">
+
+        <div class="chart-card">
+          <p class="chart-caption"><span>GAT attention network — node size = zone risk score, edge weight = attention weight</span></p>
+          <div id="chart-gat-{{ pair_lower }}" style="height:420px;width:100%;"></div>
+          <script>
+          (function() {
+            var d = {{ gat_data_json | safe }};
+            var l = {{ gat_layout_json | safe }};
+            Plotly.newPlot('chart-gat-{{ pair_lower }}', d, l, {responsive:true,displayModeBar:false});
+          })();
+          </script>
+        </div>
+
+        <div class="chart-card">
+          <p class="chart-caption"><span>Zone feature z-scores — base ({{ geo_base_zone }}) vs quote ({{ geo_quote_zone }}) currency</span></p>
+          <div id="chart-zone-{{ pair_lower }}" style="height:420px;width:100%;"></div>
+          <script>
+          (function() {
+            var d = {{ zone_data_json | safe }};
+            var l = {{ zone_layout_json | safe }};
+            Plotly.newPlot('chart-zone-{{ pair_lower }}', d, l, {responsive:true,displayModeBar:false});
+          })();
+          </script>
+        </div>
+
+      </div>
+    </section>
+
+    {# ── Risk Footer ──────────────────────────────────────────────────────── #}
+    <section id="risk-footer" class="risk-section">
+      <div class="section-head">
+        <span class="report-kicker">Risk &amp; sentiment overview</span>
+        <h2>Sentiment signals and overall risk assessment</h2>
+      </div>
+      <div class="charts-grid">
+
+        <div class="chart-card">
+          <p class="chart-caption"><span>Sentiment z-scores — GDELT tone, attention, macro attention</span></p>
+          <div id="chart-sentiment-{{ pair_lower }}" style="height:300px;width:100%;"></div>
+          <script>
+          (function() {
+            var d = {{ sentiment_data_json | safe }};
+            var l = {{ sentiment_layout_json | safe }};
+            Plotly.newPlot('chart-sentiment-{{ pair_lower }}', d, l, {responsive:true,displayModeBar:false});
+          })();
+          </script>
+        </div>
+
+        <div class="chart-card risk-summary-card">
+          <p class="chart-caption"><span>Trade parameters</span></p>
+          <dl class="trade-params-list">
+            <div><dt>Action</dt><dd class="{{ 'positive' if action == 'LONG' else 'negative' if action == 'SHORT' else '' }}">{{ action }}</dd></div>
+            <div><dt>Conviction</dt><dd>{{ conviction_score }}</dd></div>
+            <div><dt>Confidence tier</dt><dd>{{ confidence_tier }}</dd></div>
+            <div><dt>Position size</dt><dd>{{ position_size_pct }}% of equity</dd></div>
+            <div><dt>Stop loss</dt><dd>{{ sl_pct }}% from entry</dd></div>
+            <div><dt>Take profit</dt><dd>{{ tp_pct }}% from entry</dd></div>
+            <div><dt>Risk / Reward</dt><dd>{{ risk_reward }}:1</dd></div>
+            <div><dt>Direction IC</dt><dd>{{ direction_ic }}</dd></div>
+            <div><dt>Signal source</dt><dd>{{ direction_source }}</dd></div>
+            <div><dt>Horizon</dt><dd>{{ horizon }}</dd></div>
+            <div><dt>Est. vol (3d)</dt><dd>{{ vol_pct }}</dd></div>
+            <div><dt>Vol source</dt><dd>{{ vol_source }}</dd></div>
+            <div><dt>Global regime</dt><dd>{{ global_regime }}</dd></div>
+          </dl>
+          <p class="risk-assessment-text">{{ risk_assessment }}</p>
+        </div>
+
+      </div>
+    </section>
+
+    {# ── Expert Appendix (hidden by default) ─────────────────────────────── #}
+    <section id="expert-appendix" class="expert-section">
+      <div class="section-head">
+        <span class="report-kicker">Expert appendix</span>
+        <h2>Coordinator decision details</h2>
+      </div>
+      <div class="expert-grid">
+
+        {# Left block: all-pairs ranked table #}
+        <div class="expert-block">
+          <h3>All Pairs — Ranked by Conviction</h3>
+          <table class="nc-pairs-table">
+            <thead>
+              <tr>
+                <th>Pair</th>
+                <th>Action</th>
+                <th>Conviction</th>
+                <th>Tier</th>
+                <th>Horizon</th>
+                <th>Vol (3d)</th>
+                <th>Macro driver</th>
+                <th>Geo regime</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in nc_all_pairs %}
+              <tr class="{{ 'row-highlight' if p.pair == pair else '' }}">
+                <td><strong>{{ p.pair }}</strong>{% if p.pair == nc_top_pick %} ★{% endif %}</td>
+                <td class="{{ 'positive' if p.action == 'LONG' else 'negative' if p.action == 'SHORT' else '' }}">{{ p.action }}</td>
+                <td>{{ "%.4f"|format(p.conviction) }}</td>
+                <td>{{ p.confidence }}</td>
+                <td>{{ p.horizon or "—" }}</td>
+                <td>{{ "%.3f%%"|format(p.estimated_vol_pct) if p.estimated_vol_pct else "—" }}</td>
+                <td>{{ p.macro_driver or "—" }}</td>
+                <td>{{ p.geo_risk_regime or "—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          {# Top recommendation parameters #}
+          {% if nc_top_recommendation %}
+          <h3 style="margin-top:18px;">Top Recommendation — {{ nc_top_recommendation.get('pair', nc_top_pick) }}</h3>
+          <dl class="trade-params-list">
+            <div><dt>Action</dt><dd class="{{ 'positive' if nc_top_recommendation.get('action') == 'LONG' else 'negative' if nc_top_recommendation.get('action') == 'SHORT' else '' }}">{{ nc_top_recommendation.get('action', '—') }}</dd></div>
+            <div><dt>Confidence</dt><dd>{{ nc_top_recommendation.get('confidence', '—') }}</dd></div>
+            <div><dt>Direction IC</dt><dd>{{ "%.3f"|format(nc_top_recommendation.get('direction_ic', 0)) if nc_top_recommendation.get('direction_ic') else "n/a" }}</dd></div>
+            <div><dt>Signal source</dt><dd>{{ nc_top_recommendation.get('signal_source', '—') }}</dd></div>
+            <div><dt>Horizon</dt><dd>{{ nc_top_recommendation.get('horizon', '—') }}</dd></div>
+            <div><dt>Stop loss</dt><dd>{{ "%.4f%%"|format(nc_top_recommendation.get('sl_pct', 0)) }}</dd></div>
+            <div><dt>Take profit</dt><dd>{{ "%.4f%%"|format(nc_top_recommendation.get('tp_pct', 0)) }}</dd></div>
+            <div><dt>Risk / Reward</dt><dd>{{ "%.2f"|format(nc_top_recommendation.get('risk_reward', 0)) }}:1</dd></div>
+          </dl>
+          {% endif %}
+        </div>
+
+        {# Right block: coordinator summary + raw JSON collapsible #}
+        <div class="expert-block">
+          <h3>Coordinator Summary</h3>
+          <div class="nc-summary-grid">
+            <div class="nc-stat">
+              <span>Decision</span>
+              <strong>{{ nc_overall_action | upper }}</strong>
+            </div>
+            <div class="nc-stat">
+              <span>Top pick</span>
+              <strong>{{ nc_top_pick }}</strong>
+            </div>
+            <div class="nc-stat">
+              <span>Global regime</span>
+              <strong>{{ nc_global_regime | title }}</strong>
+            </div>
+          </div>
+          {% if nc_hold_reason %}
+          <p style="margin:0 0 12px;font-size:13px;color:var(--muted-strong);">
+            <strong>Hold reason:</strong> {{ nc_hold_reason }}
+          </p>
+          {% endif %}
+
+          <details class="nc-raw-toggle">
+            <summary>Raw coordinator JSON (developer view)</summary>
+            <pre class="expert-raw">{{ narrative_context_json }}</pre>
+          </details>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>

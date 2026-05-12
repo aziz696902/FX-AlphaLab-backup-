@@ -391,7 +391,7 @@ body.show-expert [data-toggle-expert] {
 }
 .hero-visual-card {
   margin: 0;
-  padding: 12px;
+  padding: 0;
   border: 1px solid rgba(184, 174, 158, 0.72);
   border-radius: var(--radius-lg);
   background: var(--surface-strong);
@@ -401,15 +401,14 @@ body.show-expert [data-toggle-expert] {
 .hero-visual-card img {
   width: 100%;
   height: auto;
-  aspect-ratio: 1200 / 760;
-  object-fit: contain;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
   object-position: center;
-  border-radius: var(--radius-md);
   display: block;
 }
 .hero-visual-card figcaption,
 .visual-caption {
-  margin-top: 8px;
+  padding: 8px 12px 10px;
   color: var(--muted);
   font-family: "Segoe UI", Arial, sans-serif;
   font-size: 12px;
@@ -992,6 +991,156 @@ body.show-expert [data-toggle-expert] {
   background: rgba(255,255,255,0.74);
 }
 .chart-caption p { margin: 5px 0 0; font-size: 13px; }
+
+/* ── Trade parameters & agent stats (label : value rows) ── */
+.trade-params-list,
+.agent-stats-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.trade-params-list > div,
+.agent-stats-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.trade-params-list > div:last-child,
+.agent-stats-list > div:last-child {
+  border-bottom: 0;
+}
+.trade-params-list dt,
+.agent-stats-list dt {
+  color: var(--muted);
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.trade-params-list dd,
+.agent-stats-list dd {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--surface-ink);
+  text-align: right;
+}
+.trade-params-list .positive { color: var(--success); }
+.trade-params-list .negative { color: var(--risk); }
+
+/* ── Expert appendix layout ── */
+.expert-section { display: none; }
+body.show-expert .expert-section { display: block; }
+.expert-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 18px;
+}
+.expert-block {
+  padding: 20px;
+  border: 1px solid rgba(184, 174, 158, 0.64);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.82);
+}
+.expert-block h3 {
+  margin-bottom: 14px;
+  font-size: 16px;
+  color: var(--surface-ink);
+}
+.expert-raw {
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 241, 234, 0.7);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+  color: var(--muted-strong);
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.nc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.nc-stat {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 241, 234, 0.6);
+  border: 1px solid rgba(184, 174, 158, 0.45);
+}
+.nc-stat span {
+  display: block;
+  color: var(--muted);
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.nc-stat strong {
+  display: block;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--surface-ink);
+}
+.nc-pairs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.nc-pairs-table th {
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+.nc-pairs-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--surface-ink);
+  vertical-align: middle;
+}
+.nc-pairs-table tr.row-highlight td {
+  background: rgba(39, 79, 105, 0.06);
+  font-weight: 700;
+}
+.nc-raw-toggle {
+  display: block;
+  margin-top: 4px;
+  border: 1px dashed rgba(184, 174, 158, 0.72);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  overflow: hidden;
+}
+.nc-raw-toggle > summary {
+  cursor: pointer;
+  padding: 9px 14px;
+  color: var(--muted);
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  user-select: none;
+}
 
 .neo-path-card { display: grid; gap: 18px; }
 .neo-path-flow {

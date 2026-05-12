@@ -68,6 +68,9 @@ class Config:
     # RAG / ChromaDB
     CHROMA_DIR: Path = ROOT_DIR / "data" / "chroma"
 
+    # Generated reports (HTML saved per date/pair)
+    REPORTS_DIR: Path = ROOT_DIR / "data" / "reports"
+
     # Data collection settings
     SCRAPING_DELAY: float = float(os.getenv("SCRAPING_DELAY", "3.0"))
     REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "30"))

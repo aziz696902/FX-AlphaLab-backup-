@@ -207,6 +207,16 @@ class InferencePipeline:
         if not dry_run:
             db_rows = self._write_to_db(signals_df, report)
 
+        # ── 8. Generate HTML reports (disk + DB) ─────────────────────────────
+        if not dry_run:
+            try:
+                from src.backend.services.report_generator import ReportGenerator
+
+                gen = ReportGenerator(root_dir=self._root)
+                gen.generate_for_date(target_date.date())
+            except Exception:
+                self._log.exception("Report generation failed — signals are safe, continuing")
+
         return PipelineResult(
             target_date=target_date,
             report=report,

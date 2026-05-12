@@ -34,6 +34,7 @@ from .models import (
     AgentSignal,
     CoordinatorReportRow,
     CoordinatorSignalRow,
+    DailyReport,
     ECBExchangeRate,
     ECBPolicyRate,
     EconomicEvent,
@@ -53,6 +54,7 @@ ALLOWED_TABLES = {
     "agent_signals",
     "coordinator_signals",
     "coordinator_reports",
+    "daily_reports",
     "trade_log",
 }
 
@@ -476,6 +478,46 @@ def insert_trade_log(data: list[dict], backtest_run: str = "live") -> int:
             except IntegrityError:
                 session.rollback()
     return inserted
+
+
+def upsert_daily_report(date: datetime, pair: str, html: str) -> None:
+    """Insert or replace a daily report HTML.  Always overwrites on conflict."""
+    with get_db() as session:
+        existing = (
+            session.query(DailyReport)
+            .filter(DailyReport.date == date, DailyReport.pair == pair)
+            .first()
+        )
+        if existing:
+            existing.html = html
+            existing.generated_at = datetime.utcnow()
+        else:
+            session.add(DailyReport(date=date, pair=pair, html=html))
+
+
+def get_latest_report_html(pair: str) -> tuple[str, datetime] | None:
+    """Return (html, date) for the most recent report for pair, or None."""
+    with get_db() as session:
+        row = (
+            session.query(DailyReport)
+            .filter(DailyReport.pair == pair)
+            .order_by(DailyReport.date.desc())
+            .first()
+        )
+        if row is None:
+            return None
+        return row.html, row.date
+
+
+def get_report_html_by_date(pair: str, date: datetime) -> str | None:
+    """Return HTML for a specific (pair, date), or None if not found."""
+    with get_db() as session:
+        row = (
+            session.query(DailyReport)
+            .filter(DailyReport.pair == pair, DailyReport.date == date)
+            .first()
+        )
+        return row.html if row else None
 
 
 def export_to_csv(table_name: str, output_path: str) -> None:
