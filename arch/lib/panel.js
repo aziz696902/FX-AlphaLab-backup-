@@ -17,7 +17,7 @@ export function showPanel(id, color) {
   if (d.metrics && d.metrics.length) {
     mHtml = `<div class="p-div"></div>
       <div class="p-section">Details</div>
-      <div style="border:1px solid rgba(255,255,255,.05);border-radius:7px;overflow:hidden">
+      <div class="p-metrics-box" style="border:1px solid rgba(255,255,255,.05);border-radius:7px;overflow:hidden">
         ${d.metrics.map(m => `<div class="p-metric">
           <span class="p-ml">${m.l}</span>
           <span class="p-mv" style="color:${color}">${m.v}</span>

@@ -277,3 +277,119 @@ body {
   z-index: 90;
   white-space: nowrap;
 }
+
+/* ── Theme toggle button ─────────────────────────────────────────────────── */
+
+#theme-btn {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .05);
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+#theme-btn:hover {
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .09);
+}
+
+/* ── Light mode ──────────────────────────────────────────────────────────── */
+
+[data-theme="light"] body {
+  background: #f0ece2;
+  color: #1c2333;
+}
+
+[data-theme="light"] #svg-wrap {
+  background: #e8e4d9;
+}
+
+[data-theme="light"] #bar {
+  background: rgba(240, 236, 226, .97);
+  border-bottom-color: rgba(0, 0, 0, .09);
+}
+
+[data-theme="light"] .bar-title { color: #1c2333; }
+
+[data-theme="light"] .bar-div { background: rgba(0, 0, 0, .1); }
+
+[data-theme="light"] .bar-sub { color: #64748b; }
+
+[data-theme="light"] .bar-tag {
+  background: rgba(161, 72, 8, .10);
+  color: #a14808;
+}
+
+[data-theme="light"] #panel {
+  background: rgba(240, 236, 226, .99);
+  border-left-color: rgba(0, 0, 0, .08);
+}
+
+[data-theme="light"] #pclose {
+  background: rgba(0, 0, 0, .05);
+  color: #64748b;
+}
+
+[data-theme="light"] #pclose:hover {
+  background: rgba(0, 0, 0, .10);
+  color: #1c2333;
+}
+
+[data-theme="light"] .p-div    { background: rgba(0, 0, 0, .06); }
+[data-theme="light"] .p-section { color: #94a3b8; }
+[data-theme="light"] .p-desc   { color: #475569; }
+[data-theme="light"] .p-ml     { color: #64748b; }
+[data-theme="light"] .p-mv     { color: #1c2333; }
+[data-theme="light"] .p-metric { border-bottom-color: rgba(0, 0, 0, .05); }
+
+[data-theme="light"] .p-metrics-box {
+  border-color: rgba(0, 0, 0, .07) !important;
+}
+
+[data-theme="light"] #legend {
+  background: rgba(240, 236, 226, .95);
+  border-color: rgba(0, 0, 0, .08);
+}
+
+[data-theme="light"] .leg-h { color: #94a3b8; }
+[data-theme="light"] .leg-i { color: #64748b; }
+
+[data-theme="light"] #hint { color: #a0aec0; }
+
+[data-theme="light"] .zbtn {
+  background: rgba(240, 236, 226, .95);
+  border-color: rgba(0, 0, 0, .09);
+  color: #64748b;
+}
+
+[data-theme="light"] .zbtn:hover {
+  color: #1c2333;
+  border-color: rgba(0, 0, 0, .20);
+  background: rgba(220, 215, 204, .95);
+}
+
+/* SVG node backgrounds — presentation attrs have 0 specificity, CSS wins */
+[data-theme="light"] #world g[data-id] > rect:first-child {
+  fill: #f7f5f0;
+}
+
+[data-theme="light"] #theme-btn {
+  border-color: rgba(0, 0, 0, .10);
+  background: rgba(0, 0, 0, .04);
+  color: #64748b;
+}
+
+[data-theme="light"] #theme-btn:hover {
+  color: #1c2333;
+  border-color: rgba(0, 0, 0, .20);
+  background: rgba(0, 0, 0, .08);
+}
